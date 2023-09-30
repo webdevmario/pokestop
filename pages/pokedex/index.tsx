@@ -56,41 +56,47 @@ function PokedexScreen() {
           Search
         </button>
       </div>
-      <div className="flex gap-8 w-full flex-wrap">
+      <div className="flex gap-8 w-full flex-wrap justify-center">
         {pokemon &&
           pokemon.map((pokemon) => (
             <div
-              className="rounded-md bg-slate-200 px-9 max-w-96"
+              className="group w-96 h-96 [perspective:1000px]"
               key={pokemon.id}
             >
-              <div>
-                <div className="uppercase flex justify-center items-center text-slate-600 tracking-widest font-bold mt-5 mb-5 text-2xl">
-                  {pokemon.name}
-                </div>
-                <div>
+              <div className="relative h-full w-full rounded-xl shadow-xl transition-all duration-500 [transform-style:preserve-3d] group-hover:[transform:rotateY(180deg)]">
+                <div className="absolute inset-0">
                   <img
+                    className="h-full w-full rounded-xl object-cover shadow-xl shadow-black/40 bg-slate-600 p-4"
                     src={`https://raw.githubusercontent.com/PokeAPI/sprites/master/${pokemon.url.replace(
                       "media/",
                       ""
                     )}`}
                   />
                 </div>
-                <div className="flex flex-row justify-center gap-6 text-slate-600 mb-6 text-lg mt-6">
-                  <div>
-                    <span className="font-bold">ID:</span> {pokemon.id}
-                  </div>
-                  <div>
-                    <span className="font-bold">Height:</span>{" "}
-                    {decimetersToFeetAndInches(pokemon.height)}
-                  </div>
-                  <div>
-                    <span className="font-bold">Weight:</span>{" "}
-                    {hectogramsToPounds(pokemon.weight)} lbs
+                <div className="absolute inset-0 h-full w-full rounded-xl bg-black/80 px-12 text-center text-slate-200 [transform:rotateY(180deg)] [backface-visibility:hidden]">
+                  <div className="flex min-h-full flex-col items-center justify-center">
+                    <h1 className="text-lg">#{pokemon.id}</h1>
+                    <h2 className="text-3xl font-bold uppercase tracking-widest mb-6">
+                      {pokemon.name}
+                    </h2>
+                    <div className="flex gap-6">
+                      <div className="text-base">
+                        <span className="font-bold">Height: </span>
+                        {decimetersToFeetAndInches(pokemon.height)}
+                      </div>
+                      <div className="text-base">
+                        <span className="font-bold">Weight: </span>
+                        {hectogramsToPounds(pokemon.weight)}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           ))}
+        {pokemon.length === 0 && (
+          <div className="text-slate-200">No results found.</div>
+        )}
       </div>
     </main>
   );
