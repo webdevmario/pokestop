@@ -1,3 +1,8 @@
+import {
+  decimetersToFeetAndInches,
+  hectogramsToPounds,
+} from "@/services/unit-conversion.service";
+import Image from "next/image";
 import { useState } from "react";
 
 function ShowcaseScreen() {
@@ -8,33 +13,8 @@ function ShowcaseScreen() {
     const response = await fetch(`/api/hello?query=${searchQuery}`);
     const json = await response.json();
 
-    console.log("json", json);
-
     setPokemon(json);
   };
-
-  function decimetersToFeetAndInches(decimeters) {
-    // 1 decimeter is equal to 0.328084 feet
-    const feet = decimeters * 0.328084;
-
-    // 1 foot is equal to 12 inches
-    const totalInches = feet * 12;
-
-    // Calculate the number of whole feet
-    const wholeFeet = Math.floor(feet);
-
-    // Calculate the remaining inches
-    const remainingInches = totalInches - wholeFeet * 12;
-
-    return `${wholeFeet} ft. ${Math.ceil(remainingInches)} in`;
-  }
-
-  function hectogramsToPounds(hectograms) {
-    // 1 hectogram is equal to 0.220462 pounds
-    const pounds = hectograms * 0.220462;
-
-    return Math.ceil(pounds);
-  }
 
   return (
     <main className="flex flex-col items-center justify-between p-24">
@@ -65,8 +45,11 @@ function ShowcaseScreen() {
             >
               <div className="relative h-full w-full rounded-xl shadow-xl transition-all duration-500 [transform-style:preserve-3d] group-hover:[transform:rotateY(180deg)]">
                 <div className="absolute inset-0">
-                  <img
+                  <Image
+                    alt={`pokemon_${pokemon.id}`}
                     className="h-full w-full rounded-xl object-cover shadow-xl shadow-black/40 bg-slate-600 p-4"
+                    height={350}
+                    width={350}
                     src={`https://raw.githubusercontent.com/PokeAPI/sprites/master/${pokemon.url.replace(
                       "media/",
                       ""
