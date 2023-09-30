@@ -5,15 +5,23 @@ import {
 import Image from "next/image";
 import { useState } from "react";
 
+interface Pokemon {
+  id: number;
+  name: string;
+  height: number;
+  weight: number;
+  url: string;
+}
+
 function ShowcaseScreen() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [pokemon, setPokemon] = useState();
+  const [pokemon, setPokemon] = useState<Pokemon[]>([]);
 
   const apiHandler = async () => {
     const response = await fetch(`/api/hello?query=${searchQuery}`);
-    const json = await response.json();
+    const pokemon = await response.json();
 
-    setPokemon(json);
+    setPokemon(pokemon);
   };
 
   return (
@@ -37,7 +45,7 @@ function ShowcaseScreen() {
         </button>
       </div>
       <div className="flex gap-8 w-full flex-wrap justify-center">
-        {pokemon &&
+        {pokemon.length > 0 &&
           pokemon.map((pokemon) => (
             <div
               className="group w-96 h-96 [perspective:1000px]"
@@ -79,7 +87,7 @@ function ShowcaseScreen() {
               </div>
             </div>
           ))}
-        {pokemon && pokemon.length === 0 && (
+        {pokemon.length === 0 && searchQuery !== "" && (
           <div className="text-slate-200">No results found.</div>
         )}
       </div>
