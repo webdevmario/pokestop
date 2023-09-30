@@ -27,7 +27,7 @@ function MainHeader() {
           </li>
           <li>
             <Link
-              href="/showcase"
+              href="/matching"
               className="font-bold cursor-pointer hover:text-gray-300 uppercase"
             >
               Matching
