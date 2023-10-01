@@ -1,6 +1,8 @@
 import fs from "fs/promises";
 import path from "path";
 
+import Title from "@/components/layout/title";
+
 import { Inter } from "next/font/google";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -12,12 +14,7 @@ function Home(props) {
     <div
       className={`flex flex-col items-center justify-between p-24 ${inter.className}`}
     >
-      <h1>Home</h1>
-      <ul>
-        {products.map((product) => (
-          <li key={product.id}>{product.title}</li>
-        ))}
-      </ul>
+      <Title name="Home" />
     </div>
   );
 }
