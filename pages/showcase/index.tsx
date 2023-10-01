@@ -16,12 +16,16 @@ interface Pokemon {
 function ShowcaseScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [pokemon, setPokemon] = useState<Pokemon[]>([]);
+  const [searchPerformed, setSearchPerformed] = useState(false);
 
   const apiHandler = async () => {
-    const response = await fetch(`/api/hello?query=${searchQuery}`);
+    setSearchPerformed(false);
+
+    const response = await fetch(`/api/pokemon?query=${searchQuery}`);
     const pokemon = await response.json();
 
     setPokemon(pokemon);
+    setSearchPerformed(true);
   };
 
   return (
@@ -87,7 +91,7 @@ function ShowcaseScreen() {
               </div>
             </div>
           ))}
-        {pokemon.length === 0 && searchQuery !== "" && (
+        {pokemon.length === 0 && searchPerformed && (
           <div className="text-slate-200">No results found.</div>
         )}
       </div>

@@ -20,24 +20,22 @@ export default async function handler(
   res: NextApiResponse<Data>
 ) {
   const { query } = req.query;
-
-  console.log("query", query);
-
   const client = await pool.connect();
 
   try {
-    // const { rows } = await client.query("SELECT CURRENT_USER");
-    // const currentUser = rows[0]["current_user"];
+    if (req.method === "GET") {
+      const { rows } = await client.query(
+        `SELECT pokemon.id, name, height, weight, url FROM pokemon INNER JOIN photos ON pokemon.id = photos.pokemon_id WHERE name like '%${query}%'`
+      );
 
-    // res.status(200).json({ name: currentUser });
-
-    const { rows } = await client.query(
-      `SELECT pokemon.id, name, height, weight, url FROM pokemon INNER JOIN photos ON pokemon.id = photos.pokemon_id WHERE name like '%${query}%'`
-    );
-
-    res.status(200).json(rows);
+      res.status(200).json(rows);
+    } else {
+      res.status(405).end(); // method not allowed
+    }
   } catch (err) {
-    console.error("err", err.message);
+    if (err instanceof Error) {
+      console.error("err", err.message);
+    }
   } finally {
     client.release();
   }
