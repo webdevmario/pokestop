@@ -1,3 +1,4 @@
+import Title from "@/components/layout/title";
 import {
   decimetersToFeetAndInches,
   hectogramsToPounds,
@@ -30,10 +31,8 @@ function ShowcaseScreen() {
 
   return (
     <main className="flex flex-col items-center justify-between p-24">
-      <div className="mb-16 mt-12">
-        <div className="flex justify-center items-center mb-6">
-          <h3 className="font-bold tracking-widest text-3xl">SHOWCASE</h3>
-        </div>
+      <Title name="Showcase" />
+      <div className="mb-16">
         <input
           type="text"
           placeholder="Enter a Pokemon name"
