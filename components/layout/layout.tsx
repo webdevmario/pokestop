@@ -1,10 +1,16 @@
+import { ReactNode } from "react";
+
 import MainHeader from "./main-header";
 
-function Layout(props) {
+interface Props {
+  children: ReactNode;
+}
+
+function Layout({ children }: Props) {
   return (
     <div className="min-h-screen">
       <MainHeader />
-      <main>{props.children}</main>
+      <main>{children}</main>
     </div>
   );
 }
