@@ -11,7 +11,7 @@ function MainHeader() {
         >
           <div className="flex gap-3 items-center">
             <Image src="/pokeball.png" alt="pokeball" width="28" height="28" />
-            <div className="text-xl">Pokéstop</div>
+            <div className="text-xl">Pokéstop Arcade</div>
           </div>
         </Link>
       </div>
