@@ -49,6 +49,14 @@ function MainHeader() {
               Trainer Guess
             </Link>
           </li>
+          <li>
+            <Link
+              href="/wordsearch"
+              className="font-bold cursor-pointer hover:text-gray-300 uppercase"
+            >
+              Wordsearch
+            </Link>
+          </li>          
         </ul>
       </nav>
     </header>
