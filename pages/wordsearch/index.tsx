@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { ChangeEvent, useEffect, useState } from "react";
 import Title from "@/components/layout/title";
 
+type Grid = string[][];
+
 function WordsearchScreen() {
-  const [grid, setGrid] = useState([]);
+  const [grid, setGrid] = useState<Grid>([]);
   const [words, setWords] = useState([
     'URSALUNA',
     'SLURPUFF',
@@ -35,7 +37,7 @@ function WordsearchScreen() {
     return grid;
   }
 
-  const handleUpdateWord = (text, index) => {
+  const handleUpdateWord = (text: ChangeEvent<HTMLInputElement>, index: number) => {
     const updatedWords = [...words];
 
     updatedWords[index] = text.target.value;
@@ -60,11 +62,6 @@ function WordsearchScreen() {
                 <input type="text" value={word} className="p-1 rounded-md" onChange={(text) => handleUpdateWord(text, index) } /></div>
             ))
           }
-          {/* ENTER WORDS (OR RANDOMLY RETRIEVE A LIST OF POKEMON TO USE) */}
-          {/* BUILD & START OVER BUTTON */}
-          {/* BUILD & SHOW GRID */}
-          {/* ACTIVE WORD BANK */}
-          {/* BUILD SELECTION TOOL, HIGHLIGHT WORDS */}
         </div>
         <div className="my-8">
           <button className="rounded-md px-4 py-2 font-bold bg-blue-500">Create Puzzle</button>
