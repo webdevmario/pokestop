@@ -1,9 +1,6 @@
 import Title from "@/components/layout/title";
-import {
-  decimetersToFeetAndInches,
-  hectogramsToPounds,
-} from "@/services/unit-conversion.service";
-import Image from "next/image";
+import PokemonCard from "@/components/pokemon/pokemon-card";
+import { ALL_TYPES, TYPE_COLORS } from "@/lib/pokemon";
 import { useState } from "react";
 
 interface Pokemon {
@@ -11,89 +8,127 @@ interface Pokemon {
   name: string;
   height: number;
   weight: number;
-  url: string;
+  types: string[];
 }
 
 function ShowcaseScreen() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
   const [pokemon, setPokemon] = useState<Pokemon[]>([]);
-  const [searchPerformed, setSearchPerformed] = useState(false);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [searched, setSearched] = useState(false);
 
-  const apiHandler = async () => {
-    setSearchPerformed(false);
+  const search = async () => {
+    setLoading(true);
+    setSearched(false);
+    const params = new URLSearchParams();
+    if (searchQuery) params.set("query", searchQuery);
+    if (typeFilter) params.set("type", typeFilter);
+    params.set("limit", "24");
 
-    const response = await fetch(`/api/pokemon?query=${searchQuery}`);
-    const pokemon = await response.json();
+    const res = await fetch(`/api/pokemon?${params}`);
+    const data = await res.json();
+    setPokemon(data.pokemon);
+    setTotal(data.total);
+    setSearched(true);
+    setLoading(false);
+  };
 
-    setPokemon(pokemon);
-    setSearchPerformed(true);
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") search();
+  };
+
+  const loadRandom = async () => {
+    setLoading(true);
+    setSearched(false);
+    const res = await fetch("/api/pokemon?random=12");
+    const data = await res.json();
+    setPokemon(data.pokemon);
+    setTotal(data.pokemon.length);
+    setSearched(true);
+    setLoading(false);
   };
 
   return (
-    <main className="flex flex-col items-center justify-between p-24">
-      <Title name="Showcase" />
-      <div className="mb-16">
+    <main className="min-h-screen px-4 py-8 max-w-7xl mx-auto">
+      <Title
+        name="Showcase"
+        subtitle="Search Pokémon and hover to flip their cards"
+      />
+
+      {/* Search controls */}
+      <div className="flex flex-col sm:flex-row gap-3 items-center justify-center mb-4">
         <input
           type="text"
-          placeholder="Enter a Pokemon name"
-          className="p-3 rounded-l-md w-60 h-14 outline-none text-slate-500"
+          placeholder="Search by name..."
+          className="px-4 py-3 rounded-xl w-64 bg-[var(--color-bg-card)] border border-white/10 text-white placeholder-[var(--color-text-muted)] outline-none focus:border-[var(--color-accent)] transition-colors"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
+          onKeyDown={handleKeyDown}
         />
+        <select
+          className="px-4 py-3 rounded-xl bg-[var(--color-bg-card)] border border-white/10 text-white outline-none focus:border-[var(--color-accent)] transition-colors"
+          value={typeFilter}
+          onChange={(e) => setTypeFilter(e.target.value)}
+        >
+          <option value="">All Types</option>
+          {ALL_TYPES.map((t) => (
+            <option key={t} value={t}>
+              {t.charAt(0).toUpperCase() + t.slice(1)}
+            </option>
+          ))}
+        </select>
         <button
-          className="border-gray-200 border-2 bg-slate-200 h-14 text-gray-700 px-6 py-3 rounded-r-md font-semibold"
-          onClick={apiHandler}
+          className="px-6 py-3 rounded-xl bg-[var(--color-accent)] text-white font-semibold hover:brightness-110 transition-all"
+          onClick={search}
         >
           Search
         </button>
+        <button
+          className="px-6 py-3 rounded-xl bg-[var(--color-bg-card)] border border-white/10 text-white font-semibold hover:bg-[var(--color-bg-hover)] transition-all"
+          onClick={loadRandom}
+        >
+          Random
+        </button>
       </div>
-      <div className="flex gap-8 w-full flex-wrap justify-center">
-        {pokemon.length > 0 &&
-          pokemon.map((pokemon) => (
-            <div
-              className="group w-96 h-96 [perspective:1000px]"
-              key={pokemon.id}
-            >
-              <div className="relative h-full w-full rounded-xl shadow-xl transition-all duration-500 [transform-style:preserve-3d] group-hover:[transform:rotateY(180deg)]">
-                <div className="absolute inset-0">
-                  {pokemon.url && (
-                    <Image
-                      alt={`pokemon_${pokemon.id}`}
-                      className="h-full w-full rounded-xl object-cover shadow-xl shadow-black/40 bg-slate-600 p-4"
-                      height={350}
-                      width={350}
-                      src={`https://raw.githubusercontent.com/PokeAPI/sprites/master/${pokemon.url.replace(
-                        "media/",
-                        ""
-                      )}`}
-                    />
-                  )}
-                </div>
-                <div className="absolute inset-0 h-full w-full rounded-xl bg-black/80 px-12 text-center text-slate-200 [transform:rotateY(180deg)] [backface-visibility:hidden]">
-                  <div className="flex min-h-full flex-col items-center justify-center">
-                    <h1 className="text-lg">#{pokemon.id}</h1>
-                    <h2 className="text-3xl font-bold uppercase tracking-widest mb-6">
-                      {pokemon.name}
-                    </h2>
-                    <div className="flex gap-6">
-                      <div className="text-base">
-                        <span className="font-bold">Height: </span>
-                        {decimetersToFeetAndInches(pokemon.height)}
-                      </div>
-                      <div className="text-base">
-                        <span className="font-bold">Weight: </span>
-                        {hectogramsToPounds(pokemon.weight)}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        {pokemon.length === 0 && searchPerformed && (
-          <div className="text-slate-200">No results found.</div>
-        )}
+
+      {searched && (
+        <p className="text-center text-sm text-[var(--color-text-muted)] mb-8">
+          {total} Pokémon found {total > 24 && `(showing first 24)`}
+        </p>
+      )}
+
+      {loading && (
+        <div className="flex justify-center py-20">
+          <div className="w-10 h-10 border-4 border-[var(--color-accent)] border-t-transparent rounded-full animate-spin" />
+        </div>
+      )}
+
+      {/* Results */}
+      <div className="flex gap-6 flex-wrap justify-center">
+        {pokemon.map((p, i) => (
+          <div
+            key={p.id}
+            className="animate-fade-in-up"
+            style={{ animationDelay: `${i * 50}ms` }}
+          >
+            <PokemonCard pokemon={p} />
+          </div>
+        ))}
       </div>
+
+      {searched && pokemon.length === 0 && !loading && (
+        <div className="text-center py-20 text-[var(--color-text-muted)]">
+          No Pokémon found. Try a different search!
+        </div>
+      )}
+
+      {!searched && !loading && (
+        <div className="text-center py-20 text-[var(--color-text-muted)]">
+          Search for a Pokémon or click Random to get started!
+        </div>
+      )}
     </main>
   );
 }

@@ -1,5 +1,4 @@
 import { ReactNode } from "react";
-
 import MainHeader from "./main-header";
 
 interface Props {
@@ -8,9 +7,9 @@ interface Props {
 
 function Layout({ children }: Props) {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-[var(--color-bg)]">
       <MainHeader />
-      <main>{children}</main>
+      <main className="pt-16">{children}</main>
     </div>
   );
 }

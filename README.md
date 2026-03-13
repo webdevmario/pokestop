@@ -1,25 +1,26 @@
-# Pokéstop
+# Pokéstop Arcade
+
+A Pokémon mini-game collection built with Next.js, TypeScript, and Tailwind CSS.
+
+All 1,281 Pokémon loaded from a local JSON dataset — no database required.
+
+## Features
+
+- **Showcase** — Search and explore Pokémon with flip cards showing stats
+- **Pokédex** — Browse all Pokémon with type/generation filters, pagination, and detail modals with evolution chains
+- **Matching** — Memory card game with easy/medium/hard difficulty and a timer
+- **Who's That Pokémon?** — Silhouette guessing game with scoring, streaks, and hints
+- **Word Search** — Procedurally generated puzzles with Pokémon names hidden in a grid
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-[API routes](https://nextjs.org/docs/api-routes/introduction) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.ts`.
+## Data
 
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/api-routes/introduction) instead of React pages.
-
-`docker run --rm -p 5432:5432 -e POSTGRES_HOST_AUTH_METHOD=trust postgres`
-
-Images: https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/1.png
+Pokémon data sourced from [PokeAPI](https://pokeapi.co/) via their GraphQL endpoint. Sprites served from the [PokeAPI sprites repo](https://github.com/PokeAPI/sprites) on GitHub.
