@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { href: "/matching", label: "Matching", emoji: "🎴" },
   { href: "/trainer-guess", label: "Who's That?", emoji: "❓" },
   { href: "/wordsearch", label: "Word Search", emoji: "🔍" },
+  { href: "/hideandseek", label: "Hide & Seek", emoji: "🌿" },
 ];
 
 function MainHeader() {

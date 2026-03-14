@@ -37,6 +37,13 @@ const GAMES = [
     emoji: "🔍",
     color: "#a98ff3",
   },
+  {
+    href: "/hideandseek",
+    title: "Hide & Seek",
+    description: "Tap the tall grass to find hidden Pokémon",
+    emoji: "🌿",
+    color: "#2d5a1e",
+  },
 ];
 
 function Home() {
