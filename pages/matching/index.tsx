@@ -12,6 +12,7 @@ interface Card {
 }
 
 type Difficulty = "easy" | "medium" | "hard";
+
 const GRID_CONFIG: Record<Difficulty, { pairs: number; cols: string }> = {
   easy: { pairs: 6, cols: "grid-cols-4" },
   medium: { pairs: 10, cols: "grid-cols-5" },
@@ -44,6 +45,7 @@ function MatchingScreen() {
     const pokemonList = data.pokemon;
 
     const pairs: Card[] = [];
+
     pokemonList.forEach((p: any) => {
       pairs.push({
         uid: `${p.id}-a`,
@@ -81,9 +83,11 @@ function MatchingScreen() {
     if (flippedIds.length >= 2) return;
 
     const card = cards.find((c) => c.uid === uid);
+
     if (!card || card.flipped || card.matched) return;
 
     const newFlipped = [...flippedIds, uid];
+
     setFlippedIds(newFlipped);
 
     setCards((prev) =>
@@ -92,6 +96,7 @@ function MatchingScreen() {
 
     if (newFlipped.length === 2) {
       setMoves((m) => m + 1);
+
       const [firstUid, secondUid] = newFlipped;
       const first = cards.find((c) => c.uid === firstUid)!;
       const second = cards.find((c) => c.uid === secondUid)!;
@@ -226,7 +231,7 @@ function MatchingScreen() {
               } ${
                 card.matched
                   ? "opacity-60 scale-95"
-                  : "hover:scale-105 cursor-pointer"
+                  : "cursor-pointer"
               }`}
             >
               {/* Card back (face down) */}
