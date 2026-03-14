@@ -1,5 +1,5 @@
 import Title from "@/components/layout/title";
-import { getSpriteUrl, TYPE_COLORS } from "@/lib/pokemon";
+import { getOfficialArtUrl, getSpriteUrl, TYPE_COLORS } from "@/lib/pokemon";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -390,11 +390,11 @@ const THEMES: Theme[] = [
 type Difficulty = "easy" | "medium" | "hard";
 const DIFFICULTY_CONFIG: Record<
   Difficulty,
-  { targets: number; decoys: number; sceneWidth: number; sceneHeight: number }
+  { targets: number; decoys: number }
 > = {
-  easy: { targets: 3, decoys: 35, sceneWidth: 1200, sceneHeight: 800 },
-  medium: { targets: 5, decoys: 60, sceneWidth: 1600, sceneHeight: 1000 },
-  hard: { targets: 7, decoys: 100, sceneWidth: 2000, sceneHeight: 1200 },
+  easy: { targets: 3, decoys: 30 },
+  medium: { targets: 5, decoys: 50 },
+  hard: { targets: 7, decoys: 80 },
 };
 
 // ─── Seeded random for stable obstacle positions ────────────────────
@@ -430,8 +430,23 @@ function HideAndSeekScreen() {
     correct: boolean;
   } | null>(null);
   const sceneRef = useRef<HTMLDivElement>(null);
+  const [sceneDims, setSceneDims] = useState({ w: 1000, h: 600 });
 
   const cfg = DIFFICULTY_CONFIG[difficulty];
+
+  // Measure available space for the scene
+  useEffect(() => {
+    function measure() {
+      // Respect the max-w-7xl (1280px) container minus padding
+      const maxW = Math.min(window.innerWidth - 64, 1248);
+      // Leave room for header(64) + title(80) + controls(48) + target bar(80) + margins(80)
+      const maxH = Math.max(window.innerHeight - 380, 350);
+      setSceneDims({ w: maxW, h: maxH });
+    }
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
 
   useEffect(() => {
     if (!timerActive) return;
@@ -500,8 +515,11 @@ function HideAndSeekScreen() {
     setTheme(newTheme);
     setSeed(newSeed);
 
+    const sceneW = sceneDims.w;
+    const sceneH = sceneDims.h;
+
     // Generate obstacles
-    const obs = generateObstacles(newTheme, cfg.sceneWidth, cfg.sceneHeight, newSeed);
+    const obs = generateObstacles(newTheme, sceneW, sceneH, newSeed);
     setObstacles(obs);
 
     const res = await fetch(`/api/pokemon?random=${Math.min(total, 100)}`);
@@ -520,14 +538,14 @@ function HideAndSeekScreen() {
     const placedList: PlacedPokemon[] = [];
     const positions: { x: number; y: number; size: number }[] = [];
 
-    const margin = 80;
+    const margin = 50;
     for (const p of targetPokemon) {
       let x: number, y: number;
-      const size = 48 + Math.random() * 16;
+      const size = 70 + Math.random() * 20;
       let attempts = 0;
       do {
-        x = margin + Math.random() * (cfg.sceneWidth - margin * 2);
-        y = margin + Math.random() * (cfg.sceneHeight - margin * 2);
+        x = margin + size / 2 + Math.random() * (sceneW - margin * 2 - size);
+        y = margin + size / 2 + Math.random() * (sceneH - margin * 2 - size);
         attempts++;
       } while (hasOverlap(x, y, size, positions) && attempts < 200);
 
@@ -537,7 +555,7 @@ function HideAndSeekScreen() {
         x,
         y,
         size,
-        rotation: (Math.random() - 0.5) * 20,
+        rotation: (Math.random() - 0.5) * 12,
         flipX: Math.random() > 0.5,
         zIndex: Math.floor(y),
         isTarget: true,
@@ -547,11 +565,11 @@ function HideAndSeekScreen() {
 
     for (const p of decoyPokemon) {
       let x: number, y: number;
-      const size = 40 + Math.random() * 28;
+      const size = 60 + Math.random() * 24;
       let attempts = 0;
       do {
-        x = 20 + Math.random() * (cfg.sceneWidth - 40);
-        y = 20 + Math.random() * (cfg.sceneHeight - 40);
+        x = size / 2 + Math.random() * (sceneW - size);
+        y = size / 2 + Math.random() * (sceneH - size);
         attempts++;
       } while (hasOverlap(x, y, size, positions) && attempts < 100);
 
@@ -580,7 +598,7 @@ function HideAndSeekScreen() {
     setTimerActive(true);
     setGameStarted(true);
     setLoading(false);
-  }, [difficulty, cfg]);
+  }, [difficulty, cfg, sceneDims]);
 
   const handlePokemonClick = (p: PlacedPokemon) => {
     if (gameWon) return;
@@ -771,17 +789,15 @@ function HideAndSeekScreen() {
           {/* Scene viewport */}
           <div
             ref={sceneRef}
-            className="relative overflow-auto rounded-2xl border-2 border-white/10 cursor-crosshair"
+            className="relative overflow-hidden rounded-2xl border-2 border-white/10 cursor-crosshair mx-auto"
             style={{
-              height: "70vh",
-              maxHeight: "700px",
+              width: sceneDims.w,
+              height: sceneDims.h,
             }}
           >
             <div
-              className="relative select-none"
+              className="relative select-none w-full h-full"
               style={{
-                width: cfg.sceneWidth,
-                height: cfg.sceneHeight,
                 background: theme.bgGradient,
               }}
             >
@@ -816,10 +832,10 @@ function HideAndSeekScreen() {
                     <button
                       key={item.key}
                       onClick={() => handlePokemonClick(p)}
-                      className={`absolute transition-all duration-200 rounded-full ${
+                      className={`absolute transition-all duration-200 ${
                         isFound
-                          ? "ring-3 ring-[var(--color-green)] ring-offset-2 ring-offset-transparent scale-110"
-                          : "hover:scale-125 hover:brightness-110"
+                          ? "ring-3 ring-[var(--color-green)] ring-offset-2 ring-offset-transparent scale-110 rounded-full"
+                          : "hover:scale-110 hover:brightness-110"
                       }`}
                       style={{
                         left: p.x - p.size / 2,
@@ -833,10 +849,11 @@ function HideAndSeekScreen() {
                       }}
                     >
                       <Image
-                        src={getSpriteUrl(p.pokemon.id)}
+                        src={getOfficialArtUrl(p.pokemon.id)}
                         alt=""
                         fill
-                        className="object-contain drop-shadow-md pointer-events-none"
+                        className="object-contain pointer-events-none"
+                        style={{ filter: "drop-shadow(1px 2px 3px rgba(0,0,0,0.5))" }}
                         unoptimized
                         draggable={false}
                       />
@@ -870,8 +887,7 @@ function HideAndSeekScreen() {
           </div>
 
           <p className="text-center text-xs text-[var(--color-text-muted)] mt-3">
-            Scroll to explore the full scene. Click a Pokémon you think is a
-            target!
+            Click a Pokémon you think is a target!
           </p>
         </>
       )}
