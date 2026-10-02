@@ -1,5 +1,8 @@
-import Title from "@/components/layout/title";
+import { RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+
+import PageMeta from "@/components/layout/page-meta";
+import { Button, Card, PageHeader, Skeleton, WinBanner } from "@/components/ui";
 
 const GRID_SIZE = 14;
 const WORD_COUNT = 8;
@@ -243,32 +246,32 @@ function WordsearchScreen() {
   };
 
   return (
-    <main className="min-h-screen px-4 py-8 max-w-4xl mx-auto">
-      <Title
-        name="Word Search"
-        subtitle="Find the hidden Pokémon names!"
+    <>
+      <PageMeta
+        title="Word Search"
+        description="Procedurally generated word search puzzles with Pokémon names hidden in the grid."
       />
 
-      <div className="flex justify-center mb-6">
-        <button
-          onClick={generatePuzzle}
-          className="px-6 py-2.5 rounded-xl bg-[var(--color-accent)] text-white font-semibold hover:brightness-110 transition-all"
+      <main className="mx-auto min-h-screen max-w-4xl px-4 py-8">
+        <PageHeader
+          title="Word Search"
+          subtitle="Find the hidden Pokémon names!"
         >
-          New Puzzle
-        </button>
-      </div>
+          <Button
+            variant="primary"
+            onClick={generatePuzzle}
+            icon={<RefreshCw aria-hidden className="h-4 w-4" />}
+          >
+            New Puzzle
+          </Button>
+        </PageHeader>
 
-      {gameComplete && (
-        <div className="text-center mb-6 p-4 rounded-2xl bg-[var(--color-green)]/10 border border-[var(--color-green)]/30">
-          <p className="text-xl font-bold text-[var(--color-green)]">
-            🎉 All words found!
-          </p>
-        </div>
-      )}
+      {gameComplete && <WinBanner title="All words found!" />}
 
       {loading ? (
-        <div className="flex justify-center py-20">
-          <div className="w-10 h-10 border-4 border-[var(--color-accent)] border-t-transparent rounded-full animate-spin" />
+        <div className="flex flex-col items-start justify-center gap-8 lg:flex-row">
+          <Skeleton className="h-[500px] w-[500px] max-w-full rounded-card" />
+          <Skeleton className="h-[320px] w-[200px] rounded-card" />
         </div>
       ) : (
         <div className="flex flex-col lg:flex-row gap-8 items-start justify-center">
@@ -281,7 +284,7 @@ function WordsearchScreen() {
             onTouchMove={handleTouchMove}
           >
             <div
-              className="inline-grid gap-0.5 bg-[var(--color-bg-card)] p-3 rounded-2xl border border-white/10"
+              className="inline-grid gap-0.5 rounded-card border border-border/10 bg-surface-raised p-3"
               style={{
                 gridTemplateColumns: `repeat(${GRID_SIZE}, 1fr)`,
               }}
@@ -315,32 +318,33 @@ function WordsearchScreen() {
           </div>
 
           {/* Word bank */}
-          <div className="bg-[var(--color-bg-card)] rounded-2xl p-5 border border-white/10 min-w-[200px]">
-            <h3 className="text-sm font-semibold text-[var(--color-text-muted)] uppercase tracking-wide mb-3">
+          <Card variant="raised" padding="lg" className="min-w-[200px]">
+            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-text-muted">
               Word Bank
             </h3>
             <ul className="space-y-2">
               {placedWords.map((pw) => (
                 <li
                   key={pw.word}
-                  className={`text-sm font-mono font-medium transition-all ${
+                  className={`font-mono text-sm font-medium transition-colors ${
                     pw.found
-                      ? "text-[var(--color-green)] line-through opacity-60"
-                      : "text-white"
+                      ? "text-success line-through opacity-60"
+                      : "text-text"
                   }`}
                 >
                   {pw.word}
                 </li>
               ))}
             </ul>
-            <p className="text-xs text-[var(--color-text-muted)] mt-4">
+            <p className="mt-4 text-xs text-text-muted">
               {placedWords.filter((w) => w.found).length} / {placedWords.length}{" "}
               found
             </p>
-          </div>
+          </Card>
         </div>
       )}
-    </main>
+      </main>
+    </>
   );
 }
 

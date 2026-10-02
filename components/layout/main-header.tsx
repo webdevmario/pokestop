@@ -1,56 +1,55 @@
+import { Menu, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useState } from "react";
 
-const NAV_ITEMS = [
-  { href: "/pokedex", label: "Pokédex", emoji: "📖" },
-  { href: "/matching", label: "Matching", emoji: "🎴" },
-  { href: "/trainer-guess", label: "Who's That?", emoji: "❓" },
-  { href: "/wordsearch", label: "Word Search", emoji: "🔍" },
-  { href: "/hideandseek", label: "Hide & Seek", emoji: "🌿" },
-];
+import { cn } from "@/lib/cn";
+import { GAME_ROUTES } from "@/lib/games";
 
 function MainHeader() {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  const linkClasses = (isActive: boolean) =>
+    cn(
+      "flex items-center gap-1.5 rounded-control px-3 py-1.5 text-sm font-medium",
+      "transition-[background-color,color] duration-200",
+      isActive
+        ? "bg-primary text-white"
+        : "text-text-muted hover:bg-border/5 hover:text-text"
+    );
+
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-[#1a1b2e]/90 border-b border-white/5">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="relative">
-            <Image
-              src="/pokeball.png"
-              alt="pokeball"
-              width={28}
-              height={28}
-              className="group-hover:animate-spin-slow transition-transform"
-            />
-          </div>
-          <span className="text-lg font-bold tracking-wide text-white">
-            Pokéstop
-            <span className="text-[var(--color-accent)] ml-1">Arcade</span>
+    <header className="fixed inset-x-0 top-0 z-50 border-b border-border/5 bg-bg/90 backdrop-blur-md">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
+        <Link href="/" className="group flex items-center gap-2.5">
+          <Image
+            src="/pokeball.png"
+            alt=""
+            width={28}
+            height={28}
+            className="group-hover:animate-spin-slow"
+          />
+          <span className="text-lg font-bold tracking-wide text-text">
+            Pokéstop<span className="ml-1 text-primary">Arcade</span>
           </span>
         </Link>
 
         {/* Desktop nav */}
         <nav className="hidden md:block">
           <ul className="flex items-center gap-1">
-            {NAV_ITEMS.map((item) => {
-              const isActive = router.pathname.startsWith(item.href);
+            {GAME_ROUTES.map(({ href, navLabel, icon: Icon }) => {
+              const isActive = router.pathname.startsWith(href);
               return (
-                <li key={item.href}>
+                <li key={href}>
                   <Link
-                    href={item.href}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                      isActive
-                        ? "bg-[var(--color-accent)] text-white"
-                        : "text-[var(--color-text-muted)] hover:text-white hover:bg-white/5"
-                    }`}
+                    href={href}
+                    aria-current={isActive ? "page" : undefined}
+                    className={linkClasses(isActive)}
                   >
-                    <span className="mr-1.5">{item.emoji}</span>
-                    {item.label}
+                    <Icon aria-hidden className="h-4 w-4" />
+                    {navLabel}
                   </Link>
                 </li>
               );
@@ -60,38 +59,36 @@ function MainHeader() {
 
         {/* Mobile hamburger */}
         <button
-          className="md:hidden text-white p-2"
-          onClick={() => setMobileOpen(!mobileOpen)}
+          type="button"
+          aria-label={mobileOpen ? "Close menu" : "Open menu"}
+          aria-expanded={mobileOpen}
+          className="p-2 text-text md:hidden"
+          onClick={() => setMobileOpen((open) => !open)}
         >
-          <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
-            {mobileOpen ? (
-              <path d="M6 6l12 12M6 18L18 6" />
-            ) : (
-              <path d="M4 6h16M4 12h16M4 18h16" />
-            )}
-          </svg>
+          {mobileOpen ? (
+            <X aria-hidden className="h-6 w-6" />
+          ) : (
+            <Menu aria-hidden className="h-6 w-6" />
+          )}
         </button>
       </div>
 
       {/* Mobile dropdown */}
       {mobileOpen && (
-        <nav className="md:hidden border-t border-white/5 bg-[#1a1b2e]/95 backdrop-blur-md">
-          <ul className="p-4 space-y-1">
-            {NAV_ITEMS.map((item) => {
-              const isActive = router.pathname.startsWith(item.href);
+        <nav className="border-t border-border/5 bg-bg/95 backdrop-blur-md md:hidden">
+          <ul className="space-y-1 p-4">
+            {GAME_ROUTES.map(({ href, navLabel, icon: Icon }) => {
+              const isActive = router.pathname.startsWith(href);
               return (
-                <li key={item.href}>
+                <li key={href}>
                   <Link
-                    href={item.href}
+                    href={href}
+                    aria-current={isActive ? "page" : undefined}
                     onClick={() => setMobileOpen(false)}
-                    className={`block px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                      isActive
-                        ? "bg-[var(--color-accent)] text-white"
-                        : "text-[var(--color-text-muted)] hover:text-white hover:bg-white/5"
-                    }`}
+                    className={cn(linkClasses(isActive), "px-4 py-2.5")}
                   >
-                    <span className="mr-2">{item.emoji}</span>
-                    {item.label}
+                    <Icon aria-hidden className="mr-1 h-4 w-4" />
+                    {navLabel}
                   </Link>
                 </li>
               );

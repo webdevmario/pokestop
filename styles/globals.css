@@ -9,25 +9,47 @@
 }
 
 :root {
-  --color-bg: #1a1b2e;
-  --color-bg-secondary: #252742;
-  --color-bg-card: #2a2d4a;
-  --color-bg-hover: #33365a;
-  --color-text: #e8e8f0;
-  --color-text-muted: #9a9bb4;
-  --color-accent: #ff5350;
-  --color-accent-glow: rgba(255, 83, 80, 0.3);
-  --color-blue: #6390f0;
-  --color-yellow: #f7d02c;
-  --color-green: #7ac74c;
+  /*
+   * Design tokens. Values are space-separated RGB channels so Tailwind can
+   * apply opacity modifiers (`bg-surface/50`). The palette itself is unchanged
+   * from the pre-design-system values — only the notation moved.
+   *
+   * Elevation ladder: bg < surface < surface-raised < surface-hover
+   */
+  --color-bg: 26 27 46; /* #1a1b2e */
+  --color-surface: 37 39 66; /* #252742 */
+  --color-surface-raised: 42 45 74; /* #2a2d4a */
+  --color-surface-hover: 51 54 90; /* #33365a */
+  --color-border: 255 255 255; /* used at low alpha: border-border/10 */
+
+  --color-text: 232 232 240; /* #e8e8f0 */
+  --color-text-muted: 154 155 180; /* #9a9bb4 */
+  --color-text-subtle: 118 119 133; /* #767785 */
+
+  --color-primary: 255 83 80; /* #ff5350 — pokeball red, main actions */
+  --color-accent: 169 143 243; /* #a98ff3 */
+  --color-success: 122 199 76; /* #7ac74c */
+  --color-warning: 247 208 44; /* #f7d02c */
+  --color-info: 99 144 240; /* #6390f0 */
+
   --font-display: "Fredoka", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
+
+  /*
+   * Legacy hex aliases. Still referenced by inline styles in the hide & seek
+   * scene, which batch 3 rewrites. Remove once that lands.
+   */
+  --color-bg-card: #2a2d4a;
+  --color-bg-secondary: #252742;
+  --color-bg-hover: #33365a;
+  --color-accent-legacy: #ff5350;
+  --color-green: #7ac74c;
 }
 
 body {
   font-family: var(--font-display);
-  background-color: var(--color-bg);
-  color: var(--color-text);
+  background-color: rgb(var(--color-bg));
+  color: rgb(var(--color-text));
   min-height: 100vh;
 }
 
@@ -36,82 +58,16 @@ body {
   width: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--color-bg-secondary);
+  background: rgb(var(--color-surface));
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-accent);
+  background: rgb(var(--color-primary));
   border-radius: 4px;
 }
-
-/* Utility animations */
-@keyframes float {
-  0%,
-  100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-8px);
-  }
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes spin-slow {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes pulse-glow {
-  0%,
-  100% {
-    box-shadow: 0 0 5px var(--color-accent-glow);
-  }
-  50% {
-    box-shadow: 0 0 20px var(--color-accent-glow),
-      0 0 40px var(--color-accent-glow);
-  }
-}
-
-@keyframes shake {
-  0%,
-  100% {
-    transform: rotate(0deg);
-  }
-  25% {
-    transform: rotate(-12deg);
-  }
-  75% {
-    transform: rotate(12deg);
-  }
-}
-
-.animate-float {
-  animation: float 3s ease-in-out infinite;
-}
-.animate-fade-in-up {
-  animation: fadeInUp 0.5s ease-out forwards;
-}
-.animate-spin-slow {
-  animation: spin-slow 8s linear infinite;
-}
-.animate-pulse-glow {
-  animation: pulse-glow 2s ease-in-out infinite;
-}
-.animate-shake {
-  animation: shake 0.5s ease-in-out;
+/* Firefox */
+* {
+  scrollbar-color: rgb(var(--color-primary)) rgb(var(--color-surface));
+  scrollbar-width: thin;
 }
 
 /* Type badge styling */
@@ -126,13 +82,13 @@ body {
   letter-spacing: 0.05em;
 }
 
-/* Card hover effect */
+/* Lift-on-hover used by the home tiles and pokedex grid cards */
 .pokemon-card {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 .pokemon-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 8px 30px rgb(0 0 0 / 0.3);
 }
 
 /* Grid cell for word search */
@@ -151,13 +107,34 @@ body {
   user-select: none;
 }
 .ws-cell:hover {
-  background: var(--color-bg-hover);
+  background: rgb(var(--color-surface-hover));
 }
 .ws-cell.selected {
-  background: var(--color-accent);
+  background: rgb(var(--color-primary));
   color: white;
 }
 .ws-cell.found {
-  background: var(--color-green);
+  background: rgb(var(--color-success));
   color: white;
+}
+
+/*
+ * Respect prefers-reduced-motion. The float / spin-slow / fade-in-up
+ * animations are decorative and run indefinitely, so they are the ones most
+ * likely to cause discomfort. Transitions are shortened rather than removed so
+ * state changes (card flips, hovers) still read as deliberate.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .pokemon-card:hover {
+    transform: none;
+  }
 }
