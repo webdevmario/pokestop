@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import path from "path";
 import fs from "fs";
 
-import type { Pokemon } from "@/lib/pokemon";
+import { hasSprite, type Pokemon } from "@/lib/pokemon";
 
 export type { Pokemon };
 
@@ -33,9 +33,16 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   const pokemon = loadPokemon();
-  const { query, id, type, generation, limit, offset, random } = req.query;
+  const { query, id, type, generation, limit, offset, random, spritesOnly } =
+    req.query;
 
   let results = pokemon;
+
+  // Exclude rows with no game sprite. Anything that renders sprites on a
+  // canvas needs this, or it gets invisible placeholders.
+  if (spritesOnly === "1") {
+    results = results.filter((p) => hasSprite(p.id));
+  }
 
   // Filter by name search
   if (query && typeof query === "string") {

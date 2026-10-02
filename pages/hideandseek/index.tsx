@@ -1,406 +1,40 @@
-import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import PageMeta from "@/components/layout/page-meta";
+import { generateProps, placeMons } from "@/components/scenes/layout";
+import SceneStage from "@/components/scenes/scene-stage";
+import SeekHud from "@/components/scenes/seek-hud";
+import { THEMES } from "@/components/scenes/themes";
+import type { PlacedMon, SceneItem, Theme } from "@/components/scenes/types";
+import ZoomPan from "@/components/scenes/zoom-pan";
 import {
   Button,
   Card,
   DifficultyPills,
   PageHeader,
   Skeleton,
-  StatTile,
   WinBanner,
   type DifficultyOption,
 } from "@/components/ui";
 import { useGameTimer } from "@/hooks/use-game-timer";
-import { getOfficialArtUrl, getSpriteUrl, type Pokemon } from "@/lib/pokemon";
-
-interface PlacedPokemon {
-  pokemon: Pokemon;
-  x: number;
-  y: number;
-  size: number;
-  rotation: number;
-  flipX: boolean;
-  zIndex: number;
-  isTarget: boolean;
-  found: boolean;
-}
-
-interface Obstacle {
-  type: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  zIndex: number;
-  rotation: number;
-  flipX: boolean;
-}
-
-// ─── SVG obstacle renderers per theme ───────────────────────────────
-
-function TreePine({ w, h }: { w: number; h: number }) {
-  const trunkW = w * 0.15;
-  const trunkH = h * 0.3;
-  return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
-      <rect
-        x={(w - trunkW) / 2}
-        y={h - trunkH}
-        width={trunkW}
-        height={trunkH}
-        fill="#5a3a1a"
-        rx={2}
-      />
-      <polygon
-        points={`${w / 2},${h * 0.05} ${w * 0.1},${h * 0.75} ${w * 0.9},${h * 0.75}`}
-        fill="#1a5a1a"
-      />
-      <polygon
-        points={`${w / 2},0 ${w * 0.15},${h * 0.55} ${w * 0.85},${h * 0.55}`}
-        fill="#226a22"
-      />
-      <polygon
-        points={`${w / 2},${h * 0.02} ${w * 0.22},${h * 0.38} ${w * 0.78},${h * 0.38}`}
-        fill="#2a7a2a"
-      />
-    </svg>
-  );
-}
-
-function TreeRound({ w, h }: { w: number; h: number }) {
-  const trunkW = w * 0.12;
-  const trunkH = h * 0.35;
-  return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
-      <rect
-        x={(w - trunkW) / 2}
-        y={h * 0.55}
-        width={trunkW}
-        height={trunkH}
-        fill="#6a4420"
-        rx={3}
-      />
-      <ellipse cx={w / 2} cy={h * 0.38} rx={w * 0.45} ry={h * 0.38} fill="#2a6a18" />
-      <ellipse cx={w * 0.35} cy={h * 0.32} rx={w * 0.28} ry={h * 0.28} fill="#338a22" />
-      <ellipse cx={w * 0.65} cy={h * 0.35} rx={w * 0.25} ry={h * 0.26} fill="#2e7a1e" />
-    </svg>
-  );
-}
-
-function Bush({ w, h }: { w: number; h: number }) {
-  return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
-      <ellipse cx={w * 0.3} cy={h * 0.65} rx={w * 0.32} ry={h * 0.38} fill="#1e5a12" />
-      <ellipse cx={w * 0.7} cy={h * 0.6} rx={w * 0.35} ry={h * 0.42} fill="#226816" />
-      <ellipse cx={w * 0.5} cy={h * 0.5} rx={w * 0.3} ry={h * 0.35} fill="#2a7a1e" />
-    </svg>
-  );
-}
-
-function GrassTuft({ w, h }: { w: number; h: number }) {
-  return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
-      {[0.2, 0.35, 0.5, 0.65, 0.8].map((xp, i) => (
-        <path
-          key={i}
-          d={`M${w * xp},${h} Q${w * xp + (i % 2 ? 5 : -5)},${h * 0.2} ${w * xp + (i % 2 ? -3 : 3)},0`}
-          stroke={i % 2 ? "#3a8a2a" : "#2a6a1a"}
-          strokeWidth={2.5}
-          fill="none"
-          strokeLinecap="round"
-        />
-      ))}
-    </svg>
-  );
-}
-
-function Rock({ w, h }: { w: number; h: number }) {
-  return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
-      <path
-        d={`M${w * 0.1},${h * 0.9} L${w * 0.05},${h * 0.5} L${w * 0.25},${h * 0.15} L${w * 0.6},${h * 0.1} L${w * 0.85},${h * 0.3} L${w * 0.95},${h * 0.7} L${w * 0.8},${h * 0.95} Z`}
-        fill="#5a5a6a"
-      />
-      <path
-        d={`M${w * 0.25},${h * 0.15} L${w * 0.4},${h * 0.5} L${w * 0.85},${h * 0.3}`}
-        fill="#6a6a7a"
-        opacity={0.5}
-      />
-    </svg>
-  );
-}
-
-function Boulder({ w, h }: { w: number; h: number }) {
-  return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
-      <ellipse cx={w * 0.5} cy={h * 0.6} rx={w * 0.48} ry={h * 0.4} fill="#4a4a5a" />
-      <ellipse cx={w * 0.42} cy={h * 0.5} rx={w * 0.3} ry={h * 0.25} fill="#5a5a6a" opacity={0.6} />
-    </svg>
-  );
-}
-
-function Stalagmite({ w, h }: { w: number; h: number }) {
-  return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
-      <path
-        d={`M${w * 0.2},${h} L${w * 0.4},${h * 0.05} L${w * 0.55},${h * 0.15} L${w * 0.8},${h} Z`}
-        fill="#3a3a5a"
-      />
-      <path
-        d={`M${w * 0.4},${h * 0.05} L${w * 0.45},${h * 0.5} L${w * 0.55},${h * 0.15}`}
-        fill="#4a4a6a"
-        opacity={0.4}
-      />
-    </svg>
-  );
-}
-
-function Crystal({ w, h }: { w: number; h: number }) {
-  return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
-      <polygon
-        points={`${w * 0.5},0 ${w * 0.7},${h * 0.35} ${w * 0.65},${h} ${w * 0.35},${h} ${w * 0.3},${h * 0.35}`}
-        fill="#7a6aaa"
-        opacity={0.8}
-      />
-      <polygon
-        points={`${w * 0.5},0 ${w * 0.5},${h} ${w * 0.35},${h} ${w * 0.3},${h * 0.35}`}
-        fill="#9a8acc"
-        opacity={0.4}
-      />
-    </svg>
-  );
-}
-
-function PalmTree({ w, h }: { w: number; h: number }) {
-  return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
-      <path
-        d={`M${w * 0.47},${h * 0.3} Q${w * 0.5},${h * 0.6} ${w * 0.52},${h}`}
-        stroke="#7a5a2a"
-        strokeWidth={w * 0.06}
-        fill="none"
-        strokeLinecap="round"
-      />
-      {[-70, -30, 10, 50, 90, 130, 170].map((angle, i) => {
-        const rad = (angle * Math.PI) / 180;
-        const len = w * 0.4;
-        const ex = w * 0.48 + Math.cos(rad) * len;
-        const ey = h * 0.25 + Math.sin(rad) * len * 0.5;
-        return (
-          <path
-            key={i}
-            d={`M${w * 0.48},${h * 0.25} Q${(w * 0.48 + ex) / 2 + (i % 2 ? 8 : -8)},${(h * 0.25 + ey) / 2 - 10} ${ex},${ey}`}
-            stroke={i % 2 ? "#2a7a18" : "#1e6a12"}
-            strokeWidth={3}
-            fill="none"
-            strokeLinecap="round"
-          />
-        );
-      })}
-    </svg>
-  );
-}
-
-function Driftwood({ w, h }: { w: number; h: number }) {
-  return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
-      <path
-        d={`M0,${h * 0.6} Q${w * 0.3},${h * 0.3} ${w * 0.6},${h * 0.5} Q${w * 0.8},${h * 0.6} ${w},${h * 0.45}`}
-        stroke="#8a7a5a"
-        strokeWidth={h * 0.2}
-        fill="none"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function Tombstone({ w, h }: { w: number; h: number }) {
-  return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
-      <path
-        d={`M${w * 0.15},${h} L${w * 0.15},${h * 0.3} Q${w * 0.15},${h * 0.05} ${w * 0.5},${h * 0.05} Q${w * 0.85},${h * 0.05} ${w * 0.85},${h * 0.3} L${w * 0.85},${h} Z`}
-        fill="#4a4a5a"
-      />
-      <line
-        x1={w * 0.5}
-        y1={h * 0.25}
-        x2={w * 0.5}
-        y2={h * 0.65}
-        stroke="#3a3a4a"
-        strokeWidth={2}
-      />
-      <line
-        x1={w * 0.33}
-        y1={h * 0.42}
-        x2={w * 0.67}
-        y2={h * 0.42}
-        stroke="#3a3a4a"
-        strokeWidth={2}
-      />
-    </svg>
-  );
-}
-
-function DeadTree({ w, h }: { w: number; h: number }) {
-  return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
-      <path
-        d={`M${w * 0.45},${h} L${w * 0.43},${h * 0.4} L${w * 0.15},${h * 0.15} M${w * 0.43},${h * 0.4} L${w * 0.55},${h * 0.35} L${w * 0.85},${h * 0.1} M${w * 0.55},${h * 0.35} L${w * 0.55},${h}`}
-        stroke="#3a2a3a"
-        strokeWidth={w * 0.06}
-        fill="none"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function LavaRock({ w, h }: { w: number; h: number }) {
-  return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
-      <path
-        d={`M${w * 0.05},${h * 0.95} L${w * 0.1},${h * 0.4} L${w * 0.3},${h * 0.1} L${w * 0.7},${h * 0.15} L${w * 0.9},${h * 0.45} L${w * 0.95},${h * 0.95} Z`}
-        fill="#3a2218"
-      />
-      <path
-        d={`M${w * 0.3},${h * 0.5} Q${w * 0.4},${h * 0.35} ${w * 0.55},${h * 0.55} Q${w * 0.65},${h * 0.7} ${w * 0.5},${h * 0.8}`}
-        stroke="#ff6a20"
-        strokeWidth={2}
-        fill="none"
-        opacity={0.6}
-      />
-    </svg>
-  );
-}
-
-function Ember({ w, h }: { w: number; h: number }) {
-  return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
-      <path
-        d={`M${w * 0.5},0 Q${w * 0.8},${h * 0.3} ${w * 0.6},${h * 0.6} Q${w * 0.7},${h * 0.8} ${w * 0.5},${h} Q${w * 0.3},${h * 0.8} ${w * 0.4},${h * 0.6} Q${w * 0.2},${h * 0.3} ${w * 0.5},0 Z`}
-        fill="#cc4400"
-        opacity={0.7}
-      />
-      <path
-        d={`M${w * 0.5},${h * 0.2} Q${w * 0.65},${h * 0.45} ${w * 0.55},${h * 0.65} Q${w * 0.45},${h * 0.75} ${w * 0.5},${h * 0.85} Q${w * 0.4},${h * 0.6} ${w * 0.45},${h * 0.45} Q${w * 0.35},${h * 0.35} ${w * 0.5},${h * 0.2} Z`}
-        fill="#ff8800"
-        opacity={0.6}
-      />
-    </svg>
-  );
-}
-
-// ─── Obstacle component router ──────────────────────────────────────
-
-function ObstacleRenderer({ type, w, h }: { type: string; w: number; h: number }) {
-  switch (type) {
-    case "pine": return <TreePine w={w} h={h} />;
-    case "tree": return <TreeRound w={w} h={h} />;
-    case "bush": return <Bush w={w} h={h} />;
-    case "grass": return <GrassTuft w={w} h={h} />;
-    case "rock": return <Rock w={w} h={h} />;
-    case "boulder": return <Boulder w={w} h={h} />;
-    case "stalagmite": return <Stalagmite w={w} h={h} />;
-    case "crystal": return <Crystal w={w} h={h} />;
-    case "palm": return <PalmTree w={w} h={h} />;
-    case "driftwood": return <Driftwood w={w} h={h} />;
-    case "tombstone": return <Tombstone w={w} h={h} />;
-    case "deadtree": return <DeadTree w={w} h={h} />;
-    case "lavarock": return <LavaRock w={w} h={h} />;
-    case "ember": return <Ember w={w} h={h} />;
-    default: return <Bush w={w} h={h} />;
-  }
-}
-
-// ─── Theme config ───────────────────────────────────────────────────
-
-type Theme = {
-  name: string;
-  emoji: string;
-  bgGradient: string;
-  obstacles: { type: string; minW: number; maxW: number; minH: number; maxH: number; weight: number }[];
-  obstacleCount: [number, number]; // [min, max]
-};
-
-const THEMES: Theme[] = [
-  {
-    name: "Viridian Forest",
-    emoji: "🌲",
-    bgGradient: "linear-gradient(180deg, #1a3a2a 0%, #2d5a1e 40%, #1e4a15 100%)",
-    obstacles: [
-      { type: "pine", minW: 70, maxW: 130, minH: 120, maxH: 220, weight: 3 },
-      { type: "tree", minW: 80, maxW: 140, minH: 100, maxH: 180, weight: 3 },
-      { type: "bush", minW: 60, maxW: 120, minH: 40, maxH: 80, weight: 5 },
-      { type: "grass", minW: 30, maxW: 60, minH: 30, maxH: 60, weight: 6 },
-      { type: "rock", minW: 40, maxW: 70, minH: 35, maxH: 60, weight: 2 },
-    ],
-    obstacleCount: [40, 70],
-  },
-  {
-    name: "Mt. Moon Cave",
-    emoji: "🪨",
-    bgGradient: "linear-gradient(180deg, #1a1a2e 0%, #2a2a4a 40%, #1a1a30 100%)",
-    obstacles: [
-      { type: "stalagmite", minW: 40, maxW: 80, minH: 80, maxH: 180, weight: 4 },
-      { type: "boulder", minW: 60, maxW: 120, minH: 50, maxH: 90, weight: 4 },
-      { type: "crystal", minW: 25, maxW: 50, minH: 50, maxH: 100, weight: 3 },
-      { type: "rock", minW: 50, maxW: 90, minH: 40, maxH: 70, weight: 5 },
-    ],
-    obstacleCount: [35, 60],
-  },
-  {
-    name: "Cerulean Beach",
-    emoji: "🏖️",
-    bgGradient: "linear-gradient(180deg, #87ceeb 0%, #5ba3d9 25%, #d4a960 65%, #c49550 100%)",
-    obstacles: [
-      { type: "palm", minW: 80, maxW: 140, minH: 140, maxH: 240, weight: 3 },
-      { type: "rock", minW: 50, maxW: 100, minH: 40, maxH: 70, weight: 3 },
-      { type: "driftwood", minW: 70, maxW: 130, minH: 25, maxH: 45, weight: 3 },
-      { type: "bush", minW: 50, maxW: 90, minH: 35, maxH: 60, weight: 4 },
-      { type: "grass", minW: 25, maxW: 50, minH: 25, maxH: 45, weight: 4 },
-    ],
-    obstacleCount: [30, 55],
-  },
-  {
-    name: "Lavender Night",
-    emoji: "👻",
-    bgGradient: "linear-gradient(180deg, #0d0d1a 0%, #1a0a2e 40%, #2a1a3e 100%)",
-    obstacles: [
-      { type: "tombstone", minW: 40, maxW: 70, minH: 55, maxH: 95, weight: 5 },
-      { type: "deadtree", minW: 70, maxW: 130, minH: 110, maxH: 200, weight: 3 },
-      { type: "rock", minW: 45, maxW: 80, minH: 35, maxH: 65, weight: 3 },
-      { type: "bush", minW: 50, maxW: 90, minH: 35, maxH: 60, weight: 3 },
-    ],
-    obstacleCount: [35, 60],
-  },
-  {
-    name: "Volcano Path",
-    emoji: "🌋",
-    bgGradient: "linear-gradient(180deg, #2a1a0a 0%, #4a2a1a 30%, #3a1a0a 70%, #5a2a0a 100%)",
-    obstacles: [
-      { type: "lavarock", minW: 60, maxW: 110, minH: 50, maxH: 90, weight: 5 },
-      { type: "boulder", minW: 55, maxW: 100, minH: 45, maxH: 80, weight: 3 },
-      { type: "ember", minW: 25, maxW: 50, minH: 35, maxH: 65, weight: 4 },
-      { type: "rock", minW: 50, maxW: 90, minH: 40, maxH: 70, weight: 3 },
-    ],
-    obstacleCount: [35, 60],
-  },
-];
-
-// ─── Difficulty ─────────────────────────────────────────────────────
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import type { Pokemon } from "@/lib/pokemon";
 
 type Difficulty = "easy" | "medium" | "hard";
-const DIFFICULTY_CONFIG: Record<
-  Difficulty,
-  { targets: number; decoys: number }
-> = {
-  easy: { targets: 3, decoys: 30 },
-  medium: { targets: 5, decoys: 50 },
-  hard: { targets: 7, decoys: 80 },
+
+interface DifficultySpec {
+  targets: number;
+  /** Total Pokemon on the plate, targets included. */
+  population: number;
+  /** Multiplier on the theme's prop density. */
+  propDensity: number;
+  hints: number;
+}
+
+const DIFFICULTY_CONFIG: Record<Difficulty, DifficultySpec> = {
+  easy: { targets: 3, population: 170, propDensity: 0.85, hints: 3 },
+  medium: { targets: 5, population: 250, propDensity: 1.0, hints: 3 },
+  hard: { targets: 7, population: 330, propDensity: 1.2, hints: 2 },
 };
 
 const DIFFICULTIES: DifficultyOption<Difficulty>[] = (
@@ -411,262 +45,206 @@ const DIFFICULTIES: DifficultyOption<Difficulty>[] = (
   hint: `find ${DIFFICULTY_CONFIG[value].targets}`,
 }));
 
-// ─── Seeded random for stable obstacle positions ────────────────────
+/**
+ * The plate is this many times the viewport, so there's somewhere to pan to.
+ * Kept under 2x: a larger plate spreads the same population thinner and the
+ * density stops reading as a crowd.
+ */
+const PLATE_SCALE = 1.9;
+/** Unscaled sprite box; depth scale takes this to roughly 21-46px on screen. */
+const MON_BASE_SIZE = 38;
+const HINT_MS = 1500;
 
-function mulberry32(a: number) {
-  return function () {
-    let t = (a += 0x6d2b79f5);
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
+/** The random endpoint caps at 100, so a dense plate needs several draws. */
+async function fetchPool(count: number): Promise<Pokemon[]> {
+  const batches = Math.ceil(count / 100);
+  const responses = await Promise.all(
+    Array.from({ length: batches }, () =>
+      fetch("/api/pokemon?random=100&spritesOnly=1").then((r) => r.json())
+    )
+  );
+
+  // Independent random draws overlap, so dedupe rather than trusting the count.
+  const seen = new Map<number, Pokemon>();
+  for (const res of responses) {
+    for (const p of res.pokemon as Pokemon[]) {
+      if (!seen.has(p.id)) seen.set(p.id, p);
+    }
+  }
+  return Array.from(seen.values());
 }
-
-// ─── Main component ─────────────────────────────────────────────────
 
 function HideAndSeekScreen() {
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
   const [theme, setTheme] = useState<Theme>(THEMES[0]);
-  const [placed, setPlaced] = useState<PlacedPokemon[]>([]);
-  const [obstacles, setObstacles] = useState<Obstacle[]>([]);
+  const [items, setItems] = useState<SceneItem[]>([]);
   const [targets, setTargets] = useState<Pokemon[]>([]);
   const [foundIds, setFoundIds] = useState<Set<number>>(new Set());
-  const [misclicks, setMisclicks] = useState(0);
+  const [misses, setMisses] = useState(0);
   const [gameStarted, setGameStarted] = useState(false);
   const [gameWon, setGameWon] = useState(false);
   const [loading, setLoading] = useState(false);
-  const timer = useGameTimer();
-  // Depend on the stable callbacks, not the timer object, which changes
-  // identity on every tick.
-  const { start: startTimer, stop: stopTimer, reset: resetTimer } = timer;
-  const [seed, setSeed] = useState(0);
-  const [clickFeedback, setClickFeedback] = useState<{
+  const [sceneKey, setSceneKey] = useState(0);
+  const [hintsLeft, setHintsLeft] = useState(DIFFICULTY_CONFIG.medium.hints);
+  const [hintedId, setHintedId] = useState<number | null>(null);
+  const [missMark, setMissMark] = useState<{
     x: number;
     y: number;
-    correct: boolean;
+    n: number;
   } | null>(null);
-  const sceneRef = useRef<HTMLDivElement>(null);
-  const [sceneDims, setSceneDims] = useState({ w: 1000, h: 600 });
 
-  const cfg = DIFFICULTY_CONFIG[difficulty];
+  const timer = useGameTimer();
+  const { start: startTimer, stop: stopTimer, reset: resetTimer } = timer;
+  const reduced = useReducedMotion();
+  const animate = !reduced;
 
-  // Measure available space for the scene
+  const hintTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const missTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [viewport, setViewport] = useState({ w: 1000, h: 560 });
+
   useEffect(() => {
     function measure() {
-      // Respect the max-w-7xl (1280px) container minus padding
-      const maxW = Math.min(window.innerWidth - 64, 1248);
-      // Leave room for header(64) + title(80) + controls(48) + target bar(80) + margins(80)
-      const maxH = Math.max(window.innerHeight - 380, 350);
-      setSceneDims({ w: maxW, h: maxH });
+      const w = Math.min(window.innerWidth - 32, 1248);
+      // Leave room for header, page header, HUD and the footer hint line.
+      const h = Math.max(window.innerHeight - 420, 360);
+      setViewport({ w, h });
     }
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
   }, []);
 
-  function hasOverlap(
-    x: number,
-    y: number,
-    size: number,
-    existing: { x: number; y: number; size: number }[]
-  ): boolean {
-    const minDist = size * 0.4;
-    return existing.some((e) => {
-      const dx = x - e.x;
-      const dy = y - e.y;
-      return Math.sqrt(dx * dx + dy * dy) < minDist + e.size * 0.4;
-    });
-  }
+  useEffect(
+    () => () => {
+      if (hintTimeout.current) clearTimeout(hintTimeout.current);
+      if (missTimeout.current) clearTimeout(missTimeout.current);
+    },
+    []
+  );
 
-  function generateObstacles(
-    theme: Theme,
-    sceneW: number,
-    sceneH: number,
-    seed: number
-  ): Obstacle[] {
-    const rng = mulberry32(seed);
-    const [minCount, maxCount] = theme.obstacleCount;
-    const count = Math.floor(rng() * (maxCount - minCount)) + minCount;
+  const plate = useMemo(
+    () => ({
+      w: Math.round(viewport.w * PLATE_SCALE),
+      h: Math.round(viewport.h * PLATE_SCALE),
+    }),
+    [viewport]
+  );
 
-    // Build weighted pool
-    const pool: typeof theme.obstacles = [];
-    for (const o of theme.obstacles) {
-      for (let i = 0; i < o.weight; i++) pool.push(o);
-    }
-
-    const obs: Obstacle[] = [];
-    for (let i = 0; i < count; i++) {
-      const template = pool[Math.floor(rng() * pool.length)];
-      const w = template.minW + rng() * (template.maxW - template.minW);
-      const h = template.minH + rng() * (template.maxH - template.minH);
-      const x = rng() * (sceneW - w);
-      const y = rng() * (sceneH - h * 0.5);
-
-      obs.push({
-        type: template.type,
-        x,
-        y,
-        width: w,
-        height: h,
-        zIndex: Math.floor(y + h), // bottom edge = depth
-        rotation: (rng() - 0.5) * 8,
-        flipX: rng() > 0.5,
-      });
-    }
-
-    return obs;
-  }
+  const cfg = DIFFICULTY_CONFIG[difficulty];
 
   const startGame = useCallback(async () => {
     setLoading(true);
-    const total = cfg.targets + cfg.decoys;
-    const newTheme = THEMES[Math.floor(Math.random() * THEMES.length)];
-    const newSeed = Math.floor(Math.random() * 999999);
-    setTheme(newTheme);
-    setSeed(newSeed);
+    setHintedId(null);
+    setMissMark(null);
 
-    const sceneW = sceneDims.w;
-    const sceneH = sceneDims.h;
+    const nextTheme = THEMES[Math.floor(Math.random() * THEMES.length)];
+    const seed = Math.floor(Math.random() * 999_999);
 
-    // Generate obstacles
-    const obs = generateObstacles(newTheme, sceneW, sceneH, newSeed);
-    setObstacles(obs);
+    const pool = await fetchPool(cfg.population);
 
-    const res = await fetch(`/api/pokemon?random=${Math.min(total, 100)}`);
-    const data = await res.json();
-    let allPokemon: Pokemon[] = data.pokemon;
+    const targetList = pool.slice(0, cfg.targets);
+    const targetIds = new Set(targetList.map((p) => p.id));
 
-    if (total > 100) {
-      const res2 = await fetch(`/api/pokemon?random=${total - 100}`);
-      const data2 = await res2.json();
-      allPokemon = [...allPokemon, ...data2.pokemon];
+    // Top up to the requested population by repeating decoys. A seek book may
+    // show the same creature twice; a decoy that duplicates a target may not,
+    // because then two sprites answer to one HUD slot.
+    const safe = pool.slice(cfg.targets).filter((p) => !targetIds.has(p.id));
+    const decoys: Pokemon[] = [];
+    const wanted = cfg.population - targetList.length;
+    for (let i = 0; i < wanted && safe.length > 0; i++) {
+      decoys.push(safe[i % safe.length]);
     }
 
-    const targetPokemon = allPokemon.slice(0, cfg.targets);
-    const decoyPokemon = allPokemon.slice(cfg.targets);
+    const props = generateProps(
+      nextTheme,
+      plate.w,
+      plate.h,
+      seed,
+      cfg.propDensity
+    );
+    const mons = placeMons({
+      targets: targetList,
+      decoys,
+      sceneW: plate.w,
+      sceneH: plate.h,
+      theme: nextTheme,
+      seed,
+      baseSize: MON_BASE_SIZE,
+    });
 
-    const placedList: PlacedPokemon[] = [];
-    const positions: { x: number; y: number; size: number }[] = [];
+    // One baseline-sorted pass over props and Pokemon together is what makes
+    // occlusion real; sorting them separately is what broke it before.
+    const merged: SceneItem[] = [...props, ...mons].sort((a, b) => a.z - b.z);
 
-    const margin = 50;
-    for (const p of targetPokemon) {
-      let x: number, y: number;
-      const size = 70 + Math.random() * 20;
-      let attempts = 0;
-      do {
-        x = margin + size / 2 + Math.random() * (sceneW - margin * 2 - size);
-        y = margin + size / 2 + Math.random() * (sceneH - margin * 2 - size);
-        attempts++;
-      } while (hasOverlap(x, y, size, positions) && attempts < 200);
-
-      positions.push({ x, y, size });
-      placedList.push({
-        pokemon: p,
-        x,
-        y,
-        size,
-        rotation: (Math.random() - 0.5) * 12,
-        flipX: Math.random() > 0.5,
-        zIndex: Math.floor(y),
-        isTarget: true,
-        found: false,
-      });
-    }
-
-    for (const p of decoyPokemon) {
-      let x: number, y: number;
-      const size = 60 + Math.random() * 24;
-      let attempts = 0;
-      do {
-        x = size / 2 + Math.random() * (sceneW - size);
-        y = size / 2 + Math.random() * (sceneH - size);
-        attempts++;
-      } while (hasOverlap(x, y, size, positions) && attempts < 100);
-
-      positions.push({ x, y, size });
-      placedList.push({
-        pokemon: p,
-        x,
-        y,
-        size,
-        rotation: (Math.random() - 0.5) * 15,
-        flipX: Math.random() > 0.5,
-        zIndex: Math.floor(y),
-        isTarget: false,
-        found: false,
-      });
-    }
-
-    placedList.sort((a, b) => a.zIndex - b.zIndex);
-
-    setPlaced(placedList);
-    setTargets(targetPokemon);
+    setTheme(nextTheme);
+    setItems(merged);
+    setTargets(targetList);
     setFoundIds(new Set());
-    setMisclicks(0);
+    setMisses(0);
+    setHintsLeft(cfg.hints);
     setGameWon(false);
-    startTimer();
     setGameStarted(true);
+    setSceneKey((k) => k + 1);
     setLoading(false);
-  }, [cfg, sceneDims, startTimer]);
+    startTimer();
+  }, [cfg, plate, startTimer]);
 
-  const handlePokemonClick = (p: PlacedPokemon) => {
-    if (gameWon) return;
+  const handleMonClick = useCallback(
+    (mon: PlacedMon) => {
+      if (gameWon) return;
 
-    if (p.isTarget && !foundIds.has(p.pokemon.id)) {
-      const newFound = new Set(foundIds);
-      newFound.add(p.pokemon.id);
-      setFoundIds(newFound);
-
-      setClickFeedback({ x: p.x, y: p.y, correct: true });
-      setTimeout(() => setClickFeedback(null), 600);
-
-      if (newFound.size === targets.length) {
-        setGameWon(true);
-        stopTimer();
+      if (mon.isTarget && !foundIds.has(mon.pokemon.id)) {
+        setFoundIds((prev) => {
+          const next = new Set(prev);
+          next.add(mon.pokemon.id);
+          if (next.size === targets.length) {
+            setGameWon(true);
+            stopTimer();
+          }
+          return next;
+        });
+        if (hintedId === mon.pokemon.id) setHintedId(null);
+      } else if (!mon.isTarget) {
+        setMisses((m) => m + 1);
+        setMissMark({
+          x: mon.x,
+          y: mon.y - (mon.height * mon.scale) / 2,
+          n: Date.now(),
+        });
       }
-    } else if (!p.isTarget) {
-      setMisclicks((m) => m + 1);
-      setClickFeedback({ x: p.x, y: p.y, correct: false });
-      setTimeout(() => setClickFeedback(null), 600);
-    }
-  };
+    },
+    [gameWon, foundIds, targets.length, stopTimer, hintedId]
+  );
 
-  // Merge pokemon + obstacles into one depth-sorted render list
-  const renderItems = useMemo(() => {
-    const items: {
-      key: string;
-      zIndex: number;
-      type: "pokemon" | "obstacle";
-      data: PlacedPokemon | Obstacle;
-    }[] = [];
+  const handleMissClick = useCallback(() => {
+    if (!gameStarted || gameWon) return;
+    setMisses((m) => m + 1);
+  }, [gameStarted, gameWon]);
 
-    placed.forEach((p, i) => {
-      items.push({
-        key: `p-${p.pokemon.id}-${i}`,
-        zIndex: p.zIndex,
-        type: "pokemon",
-        data: p,
-      });
-    });
+  const handleHint = useCallback(() => {
+    const remaining = targets.filter((t) => !foundIds.has(t.id));
+    if (remaining.length === 0 || hintsLeft <= 0) return;
 
-    obstacles.forEach((o, i) => {
-      items.push({
-        key: `o-${i}`,
-        zIndex: o.zIndex,
-        type: "obstacle",
-        data: o,
-      });
-    });
+    const pick = remaining[Math.floor(Math.random() * remaining.length)];
+    setHintedId(pick.id);
+    setHintsLeft((h) => h - 1);
 
-    items.sort((a, b) => a.zIndex - b.zIndex);
-    return items;
-  }, [placed, obstacles]);
+    if (hintTimeout.current) clearTimeout(hintTimeout.current);
+    hintTimeout.current = setTimeout(() => setHintedId(null), HINT_MS);
+  }, [targets, foundIds, hintsLeft]);
+
+  useEffect(() => {
+    if (!missMark) return;
+    if (missTimeout.current) clearTimeout(missTimeout.current);
+    missTimeout.current = setTimeout(() => setMissMark(null), 500);
+  }, [missMark]);
 
   return (
     <>
       <PageMeta
         title="Hide & Seek"
-        description="Spot the target Pokémon hidden among decoys in a procedurally generated scene."
+        description="Spot the target Pokémon hidden among hundreds of others in an illustrated scene."
       />
 
       <main className="mx-auto min-h-screen max-w-7xl px-4 py-8">
@@ -683,197 +261,94 @@ function HideAndSeekScreen() {
               resetTimer();
             }}
           />
-          <Button variant="primary" onClick={startGame}>
+          <Button variant="primary" onClick={startGame} disabled={loading}>
             {gameStarted ? "New Scene" : "Start Game"}
           </Button>
         </PageHeader>
 
-      {loading && (
-        <Skeleton
-          className="mx-auto rounded-card"
-          style={{ width: sceneDims.w, height: sceneDims.h }}
-        />
-      )}
+        {loading && (
+          <Skeleton
+            className="mx-auto rounded-card"
+            style={{ width: viewport.w, height: viewport.h }}
+          />
+        )}
 
-      {gameStarted && !loading && (
-        <>
-          {/* Target bar */}
-          <Card variant="bar" className="mb-4">
-            <div className="flex flex-wrap items-center gap-4 justify-between">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs text-[var(--color-text-muted)] uppercase font-semibold">
-                  Find:
-                </span>
-                <div className="flex gap-2 flex-wrap">
-                  {targets.map((t) => {
-                    const isFound = foundIds.has(t.id);
-                    return (
-                      <div
-                        key={t.id}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all ${
-                          isFound
-                            ? "bg-[var(--color-green)]/15 border-[var(--color-green)]/40"
-                            : "bg-[var(--color-bg-secondary)] border-white/10"
-                        }`}
-                      >
-                        <Image
-                          src={getSpriteUrl(t.id)}
-                          alt={t.name}
-                          width={28}
-                          height={28}
-                          unoptimized
-                          className={isFound ? "opacity-50" : ""}
-                        />
-                        <span
-                          className={`text-sm font-semibold capitalize ${
-                            isFound
-                              ? "line-through text-[var(--color-green)]/60"
-                              : "text-white"
-                          }`}
-                        >
-                          {t.name}
-                        </span>
-                        {isFound && (
-                          <span className="text-[var(--color-green)]">✓</span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-              <div className="flex items-center gap-5">
-                <StatTile label="Time" value={timer.formatted} size="sm" mono />
-                <StatTile label="Misses" value={misclicks} size="sm" tone="primary" />
-                <StatTile
-                  label="Scene"
-                  value={`${theme.emoji} ${theme.name}`}
-                  size="sm"
-                />
-              </div>
-            </div>
-          </Card>
-
-          {/* Win banner */}
-          {gameWon && (
-            <WinBanner
-              title="Found them all!"
-              detail={`${timer.formatted} with ${misclicks} miss${
-                misclicks !== 1 ? "es" : ""
-              }`}
+        {gameStarted && !loading && (
+          <>
+            <SeekHud
+              targets={targets}
+              foundIds={foundIds}
+              time={timer.formatted}
+              misses={misses}
+              sceneName={theme.name}
+              hintsLeft={hintsLeft}
+              onHint={handleHint}
+              hintDisabled={hintsLeft <= 0 || gameWon}
             />
-          )}
 
-          {/* Scene viewport */}
-          <div
-            ref={sceneRef}
-            className="relative overflow-hidden rounded-2xl border-2 border-white/10 cursor-crosshair mx-auto"
-            style={{
-              width: sceneDims.w,
-              height: sceneDims.h,
-            }}
-          >
-            <div
-              className="relative select-none w-full h-full"
-              style={{
-                background: theme.bgGradient,
-              }}
-            >
-              {/* Depth-sorted render: pokemon and obstacles interleaved */}
-              {renderItems.map((item) => {
-                if (item.type === "obstacle") {
-                  const o = item.data as Obstacle;
-                  return (
-                    <div
-                      key={item.key}
-                      className="absolute pointer-events-none"
-                      style={{
-                        left: o.x,
-                        top: o.y,
-                        width: o.width,
-                        height: o.height,
-                        zIndex: o.zIndex,
-                        transform: `rotate(${o.rotation}deg) scaleX(${o.flipX ? -1 : 1})`,
-                      }}
-                    >
-                      <ObstacleRenderer
-                        type={o.type}
-                        w={o.width}
-                        h={o.height}
-                      />
-                    </div>
-                  );
-                } else {
-                  const p = item.data as PlacedPokemon;
-                  const isFound = p.isTarget && foundIds.has(p.pokemon.id);
-                  return (
-                    <button
-                      key={item.key}
-                      onClick={() => handlePokemonClick(p)}
-                      className={`absolute transition-all duration-200 ${
-                        isFound
-                          ? "ring-3 ring-[var(--color-green)] ring-offset-2 ring-offset-transparent scale-110 rounded-full"
-                          : "hover:scale-110 hover:brightness-110"
-                      }`}
-                      style={{
-                        left: p.x - p.size / 2,
-                        top: p.y - p.size / 2,
-                        width: p.size,
-                        height: p.size,
-                        zIndex: p.zIndex,
-                        transform: `rotate(${p.rotation}deg) scaleX(${
-                          p.flipX ? -1 : 1
-                        })`,
-                      }}
-                    >
-                      <Image
-                        src={getOfficialArtUrl(p.pokemon.id)}
-                        alt=""
-                        fill
-                        className="object-contain pointer-events-none"
-                        style={{ filter: "drop-shadow(1px 2px 3px rgba(0,0,0,0.5))" }}
-                        unoptimized
-                        draggable={false}
-                      />
-                    </button>
-                  );
-                }
-              })}
+            {gameWon && (
+              <WinBanner
+                title="Found them all!"
+                detail={`${timer.formatted} with ${misses} miss${
+                  misses !== 1 ? "es" : ""
+                }`}
+              />
+            )}
 
-              {/* Click feedback */}
-              {clickFeedback && (
-                <div
-                  className="absolute pointer-events-none animate-fade-in-up"
-                  style={{
-                    left: clickFeedback.x - 16,
-                    top: clickFeedback.y - 40,
-                    zIndex: 9999,
-                  }}
-                >
-                  <span
-                    className={`text-2xl font-bold ${
-                      clickFeedback.correct
-                        ? "text-[var(--color-green)]"
-                        : "text-[var(--color-accent)]"
-                    }`}
-                  >
-                    {clickFeedback.correct ? "✓" : "✗"}
-                  </span>
+            <div className="mx-auto w-fit">
+              <ZoomPan
+                viewportW={viewport.w}
+                viewportH={viewport.h}
+                contentW={plate.w}
+                contentH={plate.h}
+                resetKey={sceneKey}
+                animate={animate}
+              >
+                <div className="relative">
+                  <SceneStage
+                    theme={theme}
+                    width={plate.w}
+                    height={plate.h}
+                    items={items}
+                    foundIds={foundIds}
+                    hintedId={hintedId}
+                    onMonClick={handleMonClick}
+                    onMissClick={handleMissClick}
+                    animate={animate}
+                  />
+                  {missMark && (
+                    <span
+                      key={missMark.n}
+                      aria-hidden
+                      className="pointer-events-none absolute rounded-full border-4 border-primary opacity-80"
+                      style={{
+                        left: missMark.x - 26,
+                        top: missMark.y - 26,
+                        width: 52,
+                        height: 52,
+                        zIndex: 300_000,
+                      }}
+                    />
+                  )}
                 </div>
-              )}
+              </ZoomPan>
             </div>
-          </div>
 
-          <p className="text-center text-xs text-[var(--color-text-muted)] mt-3">
-            Click a Pokémon you think is a target!
-          </p>
-        </>
-      )}
+            <p className="mt-3 text-center text-xs text-text-muted">
+              Scroll or pinch to zoom · drag to pan · click a Pokémon to call it
+            </p>
+          </>
+        )}
 
-      {!gameStarted && !loading && (
-        <Card variant="raised" padding="lg" className="text-center text-text-muted">
-          Choose a difficulty and click Start Game!
-        </Card>
-      )}
+        {!gameStarted && !loading && (
+          <Card
+            variant="raised"
+            padding="lg"
+            className="text-center text-text-muted"
+          >
+            Choose a difficulty and click Start Game!
+          </Card>
+        )}
       </main>
     </>
   );

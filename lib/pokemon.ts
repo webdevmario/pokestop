@@ -19,6 +19,32 @@ export interface Pokemon {
   evolution_chain: { id: number; name: string; order: number }[];
 }
 
+/**
+ * Rows PokeAPI has no `front_default` game sprite for. Rendering one gives an
+ * invisible, unclickable box, so anything that places sprites on screen must
+ * exclude these. Re-derive with a `pokemonsprites { sprites }` query if the
+ * dataset is ever re-imported.
+ *
+ * Checked against PokeAPI on 2026-10-02: 11 of 1351 rows.
+ */
+export const IDS_WITHOUT_SPRITE: ReadonlySet<number> = new Set([
+  10158, // pikachu-starter
+  10159, // eevee-starter
+  10264, // koraidon-limited-build
+  10265, // koraidon-sprinting-build
+  10266, // koraidon-swimming-build
+  10267, // koraidon-gliding-build
+  10268, // miraidon-low-power-mode
+  10269, // miraidon-drive-mode
+  10270, // miraidon-aquatic-mode
+  10271, // miraidon-glide-mode
+  10301, // zygarde-mega
+]);
+
+export function hasSprite(id: number): boolean {
+  return !IDS_WITHOUT_SPRITE.has(id);
+}
+
 const SPRITE_BASE =
   "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon";
 

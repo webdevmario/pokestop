@@ -138,3 +138,45 @@ body {
     transform: none;
   }
 }
+
+/*
+ * Hide & seek stage animations. Both are gated by `animate` in the component
+ * tree as well, so reduced-motion users never get the class in the first
+ * place; the media query below is belt and braces.
+ */
+@keyframes found-pop {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.35);
+  }
+  100% {
+    transform: scale(1.12);
+  }
+}
+
+@keyframes hint-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.25);
+  }
+}
+
+.animate-found-pop {
+  animation: found-pop 420ms ease-out forwards;
+}
+
+.animate-hint-pulse {
+  animation: hint-pulse 600ms ease-in-out 2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-found-pop,
+  .animate-hint-pulse {
+    animation: none !important;
+  }
+}
