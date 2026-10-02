@@ -1,3 +1,24 @@
+/**
+ * One Pokemon row as served by /api/pokemon, matching the shape written by
+ * scripts/import-pokemon.mjs. Sprite URLs are not stored on the row; build them
+ * with getSpriteUrl / getOfficialArtUrl below.
+ */
+export interface Pokemon {
+  id: number;
+  name: string;
+  height: number;
+  weight: number;
+  order: number;
+  types: string[];
+  is_baby: boolean;
+  is_legendary: boolean;
+  is_mythical: boolean;
+  generation: string;
+  region: string;
+  color: string;
+  evolution_chain: { id: number; name: string; order: number }[];
+}
+
 const SPRITE_BASE =
   "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon";
 
@@ -31,15 +52,15 @@ export const TYPE_COLORS: Record<string, { bg: string; text: string }> = {
 };
 
 export const GENERATIONS = [
-  { value: "generation-i", label: "Gen I — Kanto", count: 151 },
-  { value: "generation-ii", label: "Gen II — Johto", count: 100 },
-  { value: "generation-iii", label: "Gen III — Hoenn", count: 135 },
-  { value: "generation-iv", label: "Gen IV — Sinnoh", count: 107 },
-  { value: "generation-v", label: "Gen V — Unova", count: 156 },
-  { value: "generation-vi", label: "Gen VI — Kalos", count: 72 },
-  { value: "generation-vii", label: "Gen VII — Alola", count: 88 },
-  { value: "generation-viii", label: "Gen VIII — Galar", count: 96 },
-  { value: "generation-ix", label: "Gen IX — Paldea", count: 120 },
+  { value: "generation-i", label: "Gen I — Kanto" },
+  { value: "generation-ii", label: "Gen II — Johto" },
+  { value: "generation-iii", label: "Gen III — Hoenn" },
+  { value: "generation-iv", label: "Gen IV — Sinnoh" },
+  { value: "generation-v", label: "Gen V — Unova" },
+  { value: "generation-vi", label: "Gen VI — Kalos" },
+  { value: "generation-vii", label: "Gen VII — Alola" },
+  { value: "generation-viii", label: "Gen VIII — Galar" },
+  { value: "generation-ix", label: "Gen IX — Paldea" },
 ];
 
 export const ALL_TYPES = Object.keys(TYPE_COLORS);

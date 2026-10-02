@@ -1,13 +1,7 @@
 import Title from "@/components/layout/title";
-import { getOfficialArtUrl } from "@/lib/pokemon";
+import { getOfficialArtUrl, type Pokemon } from "@/lib/pokemon";
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
-
-interface Pokemon {
-  id: number;
-  name: string;
-  types: string[];
-}
 
 interface Round {
   answer: Pokemon;
