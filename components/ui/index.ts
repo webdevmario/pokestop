@@ -1,6 +1,7 @@
 export { default as Button } from "./button";
 export { default as Card } from "./card";
 export { default as DifficultyPills } from "./difficulty-pills";
+export { default as Modal } from "./modal";
 export { default as PageHeader } from "./page-header";
 export { default as Skeleton } from "./skeleton";
 export { default as StatTile } from "./stat-tile";

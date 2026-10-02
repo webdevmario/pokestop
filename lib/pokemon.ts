@@ -45,6 +45,32 @@ export function hasSprite(id: number): boolean {
   return !IDS_WITHOUT_SPRITE.has(id);
 }
 
+/**
+ * Rows with no official artwork. A different set from IDS_WITHOUT_SPRITE, so
+ * anything showing the large art (the silhouette round, the Pokedex modal)
+ * needs this one.
+ *
+ * Checked against PokeAPI on 2026-10-02: 12 of 1351 rows.
+ */
+export const IDS_WITHOUT_OFFICIAL_ART: ReadonlySet<number> = new Set([
+  10143, // mimikyu-busted
+  10145, // mimikyu-totem-busted
+  10264, // koraidon-limited-build
+  10265, // koraidon-sprinting-build
+  10266, // koraidon-swimming-build
+  10267, // koraidon-gliding-build
+  10268, // miraidon-low-power-mode
+  10269, // miraidon-drive-mode
+  10270, // miraidon-aquatic-mode
+  10271, // miraidon-glide-mode
+  10322, // tatsugiri-curly-mega
+  10323, // tatsugiri-droopy-mega
+]);
+
+export function hasOfficialArt(id: number): boolean {
+  return !IDS_WITHOUT_OFFICIAL_ART.has(id);
+}
+
 const SPRITE_BASE =
   "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon";
 

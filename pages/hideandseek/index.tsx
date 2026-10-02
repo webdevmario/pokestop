@@ -55,23 +55,16 @@ const PLATE_SCALE = 1.9;
 const MON_BASE_SIZE = 38;
 const HINT_MS = 1500;
 
-/** The random endpoint caps at 100, so a dense plate needs several draws. */
+/**
+ * One sampled draw for the whole plate. This used to be several capped
+ * requests, which were independent draws and so overlapped — the dedupe that
+ * covered for it also meant the plate quietly came up short.
+ */
 async function fetchPool(count: number): Promise<Pokemon[]> {
-  const batches = Math.ceil(count / 100);
-  const responses = await Promise.all(
-    Array.from({ length: batches }, () =>
-      fetch("/api/pokemon?random=100&spritesOnly=1").then((r) => r.json())
-    )
-  );
-
-  // Independent random draws overlap, so dedupe rather than trusting the count.
-  const seen = new Map<number, Pokemon>();
-  for (const res of responses) {
-    for (const p of res.pokemon as Pokemon[]) {
-      if (!seen.has(p.id)) seen.set(p.id, p);
-    }
-  }
-  return Array.from(seen.values());
+  const res = await fetch(`/api/pokemon?random=${count}&spritesOnly=1`);
+  if (!res.ok) return [];
+  const data = await res.json();
+  return (data.pokemon ?? []) as Pokemon[];
 }
 
 function HideAndSeekScreen() {

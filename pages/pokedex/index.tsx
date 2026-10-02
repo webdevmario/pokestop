@@ -7,6 +7,7 @@ import PokemonCard from "@/components/pokemon/pokemon-card";
 import {
   Button,
   Card,
+  Modal,
   PageHeader,
   Skeleton,
   StatTile,
@@ -189,19 +190,17 @@ function PokedexScreen() {
         )}
 
         {/* Detail Modal */}
-        {selected && (
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label={selected.name}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
-            onClick={() => setSelected(null)}
-          >
+        <Modal
+          open={selected !== null}
+          onClose={() => setSelected(null)}
+          label={selected?.name ?? "Pokémon details"}
+          className="w-full max-w-lg"
+        >
+          {selected && (
             <Card
               variant="surface"
               padding="none"
-              className="max-h-[85vh] w-full max-w-lg overflow-y-auto"
-              onClick={(e) => e.stopPropagation()}
+              className="max-h-[85vh] w-full overflow-y-auto"
             >
               {/* Header art — click/tap the artwork to flip to key stats */}
               <div className="relative h-48 overflow-hidden rounded-t-card">
@@ -332,8 +331,8 @@ function PokedexScreen() {
                 )}
               </div>
             </Card>
-          </div>
-        )}
+          )}
+        </Modal>
       </main>
     </>
   );
