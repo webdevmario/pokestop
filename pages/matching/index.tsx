@@ -220,44 +220,50 @@ function MatchingScreen() {
           className={`grid ${GRID_CONFIG[difficulty].cols} gap-2 max-w-fit mx-auto`}
         >
           {cards.map((card) => (
-            <button
+            // perspective lives on a wrapper: without it rotateY is an
+            // orthographic mirror that reads as a snap, not a card turning.
+            <div
               key={card.uid}
-              onClick={() => handleCardClick(card.uid)}
-              disabled={card.matched || card.flipped}
-              className={`w-20 h-20 sm:w-24 sm:h-24 rounded-xl transition-all duration-300 [transform-style:preserve-3d] ${
-                card.flipped || card.matched
-                  ? "[transform:rotateY(180deg)]"
-                  : ""
-              } ${
-                card.matched
-                  ? "opacity-60 scale-95"
-                  : "cursor-pointer"
+              className={`w-20 h-20 sm:w-24 sm:h-24 [perspective:800px] transition-[opacity,filter] duration-300 ${
+                card.matched ? "opacity-60 saturate-50" : ""
               }`}
             >
-              {/* Card back (face down) */}
-              <div className="absolute inset-0 rounded-xl bg-[var(--color-accent)] flex items-center justify-center [backface-visibility:hidden] border-2 border-[var(--color-accent)]">
-                <Image
-                  src="/pokeball.png"
-                  alt="hidden"
-                  width={36}
-                  height={36}
-                  className="opacity-40"
-                />
-              </div>
-              {/* Card front (face up) */}
-              <div className="absolute inset-0 rounded-xl bg-[var(--color-bg-card)] border border-white/10 flex flex-col items-center justify-center [transform:rotateY(180deg)] [backface-visibility:hidden]">
-                <Image
-                  src={getSpriteUrl(card.pokemonId)}
-                  alt={card.name}
-                  width={56}
-                  height={56}
-                  unoptimized
-                />
-                <p className="text-[9px] capitalize text-white/70 mt-0.5">
-                  {card.name}
-                </p>
-              </div>
-            </button>
+              <button
+                onClick={() => handleCardClick(card.uid)}
+                disabled={card.matched || card.flipped}
+                // transform is written here and nowhere else — the matched state
+                // uses opacity/saturate on the wrapper so nothing competes for it.
+                className={`relative w-full h-full rounded-xl transition-transform duration-300 [transform-style:preserve-3d] [will-change:transform] ${
+                  card.flipped || card.matched
+                    ? "[transform:rotateY(180deg)]"
+                    : "cursor-pointer"
+                }`}
+              >
+                {/* Card back (face down) */}
+                <div className="absolute inset-0 rounded-xl bg-[var(--color-accent)] flex items-center justify-center [backface-visibility:hidden] [transform:translateZ(0)] border-2 border-[var(--color-accent)]">
+                  <Image
+                    src="/pokeball.png"
+                    alt="hidden"
+                    width={36}
+                    height={36}
+                    className="opacity-40"
+                  />
+                </div>
+                {/* Card front (face up) */}
+                <div className="absolute inset-0 rounded-xl bg-[var(--color-bg-card)] border border-white/10 flex flex-col items-center justify-center [transform:rotateY(180deg)] [backface-visibility:hidden]">
+                  <Image
+                    src={getSpriteUrl(card.pokemonId)}
+                    alt={card.name}
+                    width={56}
+                    height={56}
+                    sizes="56px"
+                  />
+                  <p className="text-[9px] capitalize text-white/70 mt-0.5">
+                    {card.name}
+                  </p>
+                </div>
+              </button>
+            </div>
           ))}
         </div>
       )}

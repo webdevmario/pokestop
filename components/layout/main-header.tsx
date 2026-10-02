@@ -4,7 +4,6 @@ import { useRouter } from "next/router";
 import { useState } from "react";
 
 const NAV_ITEMS = [
-  { href: "/showcase", label: "Showcase", emoji: "✨" },
   { href: "/pokedex", label: "Pokédex", emoji: "📖" },
   { href: "/matching", label: "Matching", emoji: "🎴" },
   { href: "/trainer-guess", label: "Who's That?", emoji: "❓" },

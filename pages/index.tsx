@@ -1,18 +1,16 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import pokemonFile from "@/data/pokemon.json";
+
+// Read from the dataset so re-running scripts/import-pokemon.mjs keeps this honest.
+const POKEMON_COUNT = pokemonFile._meta.rowCount.toLocaleString();
+
 const GAMES = [
-  {
-    href: "/showcase",
-    title: "Showcase",
-    description: "Search and explore Pokémon with flip cards",
-    emoji: "✨",
-    color: "#ff5350",
-  },
   {
     href: "/pokedex",
     title: "Pokédex",
-    description: "Browse all 1,281 Pokémon with filters",
+    description: `Browse all ${POKEMON_COUNT} Pokémon with filters`,
     emoji: "📖",
     color: "#6390f0",
   },

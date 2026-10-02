@@ -1,13 +1,7 @@
 import Title from "@/components/layout/title";
-import { getOfficialArtUrl, getSpriteUrl, TYPE_COLORS } from "@/lib/pokemon";
+import { getOfficialArtUrl, getSpriteUrl, type Pokemon } from "@/lib/pokemon";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-
-interface Pokemon {
-  id: number;
-  name: string;
-  types: string[];
-}
 
 interface PlacedPokemon {
   pokemon: Pokemon;

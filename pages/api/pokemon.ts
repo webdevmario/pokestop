@@ -2,22 +2,18 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import path from "path";
 import fs from "fs";
 
-export interface Pokemon {
-  id: number;
-  name: string;
-  height: number;
-  weight: number;
-  order: number;
-  types: string[];
-  is_baby: boolean;
-  is_legendary: boolean;
-  is_mythical: boolean;
-  generation: string;
-  region: string;
-  color: string;
-  evolution_chain: { id: number; name: string; order: number }[];
-  sprite: string | null;
-  official_art: string | null;
+import type { Pokemon } from "@/lib/pokemon";
+
+export type { Pokemon };
+
+interface PokemonFile {
+  _meta: {
+    fetchedAt: string;
+    rowCount: number;
+    sourceSchemaVersion: string;
+    source: string;
+  };
+  pokemon: Pokemon[];
 }
 
 let cachedPokemon: Pokemon[] | null = null;
@@ -26,19 +22,9 @@ function loadPokemon(): Pokemon[] {
   if (cachedPokemon) return cachedPokemon;
   const filePath = path.join(process.cwd(), "data", "pokemon.json");
   const raw = fs.readFileSync(filePath, "utf-8");
-  cachedPokemon = JSON.parse(raw);
+  const file: PokemonFile = JSON.parse(raw);
+  cachedPokemon = file.pokemon;
   return cachedPokemon!;
-}
-
-const SPRITE_BASE =
-  "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon";
-
-export function getSpriteUrl(id: number): string {
-  return `${SPRITE_BASE}/${id}.png`;
-}
-
-export function getOfficialArtUrl(id: number): string {
-  return `${SPRITE_BASE}/other/official-artwork/${id}.png`;
 }
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {

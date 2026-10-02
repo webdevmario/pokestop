@@ -1,11 +1,12 @@
 import Title from "@/components/layout/title";
+import PokemonCard from "@/components/pokemon/pokemon-card";
 import {
   TYPE_COLORS,
   ALL_TYPES,
   GENERATIONS,
   getSpriteUrl,
-  getOfficialArtUrl,
   formatPokemonId,
+  type Pokemon,
 } from "@/lib/pokemon";
 import {
   decimetersToFeetAndInches,
@@ -13,21 +14,6 @@ import {
 } from "@/services/unit-conversion.service";
 import Image from "next/image";
 import { useEffect, useState, useCallback } from "react";
-
-interface Pokemon {
-  id: number;
-  name: string;
-  height: number;
-  weight: number;
-  types: string[];
-  is_legendary: boolean;
-  is_mythical: boolean;
-  is_baby: boolean;
-  generation: string;
-  region: string;
-  color: string;
-  evolution_chain: { id: number; name: string; order: number }[];
-}
 
 const PAGE_SIZE = 48;
 
@@ -133,7 +119,7 @@ function PokedexScreen() {
                     width={64}
                     height={64}
                     className="mx-auto"
-                    unoptimized
+                    sizes="64px"
                   />
                   <p className="text-[10px] text-white/40 font-mono">
                     {formatPokemonId(p.id)}
@@ -191,29 +177,16 @@ function PokedexScreen() {
             className="bg-[var(--color-bg-secondary)] rounded-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto border border-white/10"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header art */}
-            <div
-              className="relative h-48 flex items-center justify-center rounded-t-2xl"
-              style={{
-                background: `linear-gradient(135deg, ${
-                  TYPE_COLORS[selected.types[0]]?.bg || "#666"
-                }33, ${TYPE_COLORS[selected.types[0]]?.bg || "#666"}66)`,
-              }}
-            >
+            {/* Header art — click/tap the artwork to flip to key stats */}
+            <div className="relative h-48 overflow-hidden rounded-t-2xl">
+              <PokemonCard pokemon={selected} />
               <button
                 onClick={() => setSelected(null)}
-                className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/30 flex items-center justify-center text-white/70 hover:text-white"
+                aria-label="Close"
+                className="absolute top-3 right-3 z-20 w-8 h-8 rounded-full bg-black/40 flex items-center justify-center text-white/70 hover:text-white"
               >
                 ✕
               </button>
-              <Image
-                src={getOfficialArtUrl(selected.id)}
-                alt={selected.name}
-                width={160}
-                height={160}
-                className="drop-shadow-lg"
-                unoptimized
-              />
             </div>
 
             <div className="p-6">
@@ -315,7 +288,7 @@ function PokedexScreen() {
                             alt={evo.name}
                             width={48}
                             height={48}
-                            unoptimized
+                            sizes="48px"
                           />
                           <span className="text-[10px] capitalize text-white">
                             {evo.name}
