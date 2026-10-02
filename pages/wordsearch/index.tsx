@@ -285,9 +285,14 @@ function WordsearchScreen() {
           >
             <div
               className="inline-grid gap-0.5 rounded-card border border-border/10 bg-surface-raised p-3"
-              style={{
-                gridTemplateColumns: `repeat(${GRID_SIZE}, 1fr)`,
-              }}
+              style={
+                {
+                  // Fits the grid to narrow viewports; capped so desktop is
+                  // unchanged. Accounts for page padding and the grid's own.
+                  "--ws-cell": `clamp(17px, calc((100vw - 5rem) / ${GRID_SIZE}), 32px)`,
+                  gridTemplateColumns: `repeat(${GRID_SIZE}, var(--ws-cell))`,
+                } as React.CSSProperties
+              }
             >
               {grid.map((row, ri) =>
                 row.map((cell, ci) => {

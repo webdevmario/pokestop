@@ -3,15 +3,103 @@ import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 
 import PageMeta from "@/components/layout/page-meta";
-import { Button, Card, PageHeader, Skeleton, StatTile } from "@/components/ui";
+import {
+  Button,
+  Card,
+  DifficultyPills,
+  PageHeader,
+  Skeleton,
+  StatTile,
+  type DifficultyOption,
+} from "@/components/ui";
 import { getOfficialArtUrl, type Pokemon } from "@/lib/pokemon";
+
+type Difficulty = "easy" | "medium" | "hard";
+
+interface DifficultySpec {
+  /** How many rows to sample before choosing an answer and distractors. */
+  pool: number;
+  /**
+   * How close the distractors must be to the answer. `any` takes whatever is
+   * in the pool; `related` prefers a shared type or generation; `similar`
+   * takes the three most similar rows available.
+   */
+  similarity: "any" | "related" | "similar";
+}
+
+const DIFFICULTY_CONFIG: Record<Difficulty, DifficultySpec> = {
+  easy: { pool: 60, similarity: "any" },
+  medium: { pool: 140, similarity: "related" },
+  hard: { pool: 260, similarity: "similar" },
+};
+
+const DIFFICULTIES: DifficultyOption<Difficulty>[] = (
+  Object.keys(DIFFICULTY_CONFIG) as Difficulty[]
+).map((value) => ({ value, label: value }));
+
+const CHOICE_COUNT = 4;
 
 interface Round {
   answer: Pokemon;
   choices: Pokemon[];
 }
 
+/**
+ * How plausible `candidate` is as a wrong answer for `answer`. Higher is a
+ * harder distractor. Shape data isn't in the dataset, so this leans on the
+ * attributes that most affect how alike two Pokemon look at a glance.
+ */
+function similarityScore(answer: Pokemon, candidate: Pokemon): number {
+  let score = 0;
+  if (candidate.types[0] && candidate.types[0] === answer.types[0]) score += 4;
+  else if (candidate.types.some((t) => answer.types.includes(t))) score += 2;
+  if (candidate.generation === answer.generation) score += 1;
+  if (candidate.color === answer.color) score += 2;
+  return score;
+}
+
+function shuffle<T>(items: T[]): T[] {
+  const out = [...items];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+function buildRound(pool: Pokemon[], spec: DifficultySpec): Round | null {
+  if (pool.length < CHOICE_COUNT) return null;
+
+  const answer = pool[Math.floor(Math.random() * pool.length)];
+  const others = pool.filter((p) => p.id !== answer.id);
+
+  let distractors: Pokemon[];
+
+  if (spec.similarity === "any") {
+    distractors = shuffle(others).slice(0, CHOICE_COUNT - 1);
+  } else {
+    const ranked = others
+      .map((p) => ({ p, score: similarityScore(answer, p) }))
+      .sort((a, b) => b.score - a.score);
+
+    if (spec.similarity === "similar") {
+      distractors = ranked.slice(0, CHOICE_COUNT - 1).map((r) => r.p);
+    } else {
+      // Prefer anything that shares a type or generation, but keep it varied
+      // by sampling from the related band rather than taking the strict top.
+      const related = ranked.filter((r) => r.score > 0);
+      const band = related.length >= CHOICE_COUNT - 1 ? related : ranked;
+      distractors = shuffle(band.slice(0, Math.max(CHOICE_COUNT - 1, 12)))
+        .slice(0, CHOICE_COUNT - 1)
+        .map((r) => r.p);
+    }
+  }
+
+  return { answer, choices: shuffle([answer, ...distractors]) };
+}
+
 function TrainerGuessScreen() {
+  const [difficulty, setDifficulty] = useState<Difficulty>("medium");
   const [round, setRound] = useState<Round | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [guessedCorrectly, setGuessedCorrectly] = useState<boolean | null>(null);
@@ -19,8 +107,13 @@ function TrainerGuessScreen() {
   const [streak, setStreak] = useState(0);
   const [bestStreak, setBestStreak] = useState(0);
   const [totalRounds, setTotalRounds] = useState(0);
+  // Tracked separately from `score`: a hinted win is worth fewer points but is
+  // still a correct answer, so one can't be derived from the other.
+  const [correctCount, setCorrectCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [hintUsed, setHintUsed] = useState(false);
+
+  const spec = DIFFICULTY_CONFIG[difficulty];
 
   const loadRound = useCallback(async () => {
     setLoading(true);
@@ -28,20 +121,13 @@ function TrainerGuessScreen() {
     setGuessedCorrectly(null);
     setHintUsed(false);
 
-    // Get 4 random pokemon for choices
-    const res = await fetch("/api/pokemon?random=4");
+    const res = await fetch(
+      `/api/pokemon?random=${spec.pool}&artOnly=1&spritesOnly=1`
+    );
     const data = await res.json();
-    const choices: Pokemon[] = data.pokemon;
-
-    // Pick one as the answer
-    const answer = choices[Math.floor(Math.random() * choices.length)];
-
-    // Shuffle choices
-    const shuffled = [...choices].sort(() => Math.random() - 0.5);
-
-    setRound({ answer, choices: shuffled });
+    setRound(buildRound((data.pokemon ?? []) as Pokemon[], spec));
     setLoading(false);
-  }, []);
+  }, [spec]);
 
   useEffect(() => {
     loadRound();
@@ -56,20 +142,27 @@ function TrainerGuessScreen() {
     setTotalRounds((t) => t + 1);
 
     if (correct) {
-      const points = hintUsed ? 5 : 10;
-      setScore((s) => s + points);
+      setScore((s) => s + (hintUsed ? 5 : 10));
+      setCorrectCount((c) => c + 1);
       setStreak((s) => {
-        const newStreak = s + 1;
-        setBestStreak((b) => Math.max(b, newStreak));
-        return newStreak;
+        const next = s + 1;
+        setBestStreak((b) => Math.max(b, next));
+        return next;
       });
     } else {
       setStreak(0);
     }
   };
 
-  const showHint = () => {
-    setHintUsed(true);
+  const accuracy =
+    totalRounds > 0 ? Math.round((correctCount / totalRounds) * 100) : 0;
+
+  const resetStats = () => {
+    setScore(0);
+    setStreak(0);
+    setBestStreak(0);
+    setTotalRounds(0);
+    setCorrectCount(0);
   };
 
   return (
@@ -83,7 +176,16 @@ function TrainerGuessScreen() {
         <PageHeader
           title="Who's That Pokémon?"
           subtitle="Guess the Pokémon from its silhouette!"
-        />
+        >
+          <DifficultyPills
+            options={DIFFICULTIES}
+            value={difficulty}
+            onChange={(d) => {
+              setDifficulty(d);
+              resetStats();
+            }}
+          />
+        </PageHeader>
 
         {/* Score bar */}
         <div className="mb-8 flex justify-center gap-8">
@@ -95,18 +197,7 @@ function TrainerGuessScreen() {
             icon={<Flame aria-hidden className="h-5 w-5" />}
           />
           <StatTile label="Best" value={bestStreak} tone="success" />
-          <StatTile
-            label="Accuracy"
-            value={`${
-              totalRounds > 0
-                ? Math.round(
-                    ((score / (hintUsed ? 5 : 10) / totalRounds) * 100 +
-                      Number.EPSILON) *
-                      10
-                  ) / 10 || 0
-                : 0
-            }%`}
-          />
+          <StatTile label="Accuracy" value={`${accuracy}%`} />
         </div>
 
         {loading && (
@@ -124,20 +215,32 @@ function TrainerGuessScreen() {
                 padding="none"
                 className="relative flex h-64 w-64 items-center justify-center overflow-hidden"
               >
+                {/*
+                 * A pure-black silhouette on the dark card was effectively
+                 * invisible. The window behind it is light while hidden, so the
+                 * outline reads clearly without revealing any interior detail —
+                 * the artwork is still flattened to solid black.
+                 */}
+                <div
+                  aria-hidden
+                  className="absolute inset-0 transition-opacity duration-500"
+                  style={{
+                    background:
+                      "linear-gradient(160deg, #eef1f9 0%, #c3c9de 100%)",
+                    opacity: revealed ? 0 : 1,
+                  }}
+                />
                 <Image
                   src={getOfficialArtUrl(round.answer.id)}
                   alt={revealed ? round.answer.name : "Mystery Pokémon"}
                   width={200}
                   height={200}
-                  className={`transition-[filter] duration-500 ${
-                    revealed ? "brightness-100" : "brightness-0 contrast-200"
-                  }`}
+                  className="relative transition-[filter] duration-500"
                   style={{
-                    filter: revealed
-                      ? "none"
-                      : "brightness(0) drop-shadow(0 0 1px white)",
+                    filter: revealed ? "none" : "brightness(0) saturate(0)",
                   }}
                   sizes="200px"
+                  priority
                 />
                 {revealed && (
                   <div
@@ -171,7 +274,7 @@ function TrainerGuessScreen() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={showHint}
+                    onClick={() => setHintUsed(true)}
                     icon={<Lightbulb aria-hidden className="h-4 w-4" />}
                   >
                     Need a hint? (half points)

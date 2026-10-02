@@ -7,6 +7,7 @@ import {
   Card,
   DifficultyPills,
   PageHeader,
+  Skeleton,
   StatTile,
   WinBanner,
   type DifficultyOption,
@@ -46,6 +47,7 @@ function MatchingScreen() {
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
   const [gameStarted, setGameStarted] = useState(false);
   const [gameWon, setGameWon] = useState(false);
+  const [loading, setLoading] = useState(false);
   const timer = useGameTimer();
   // Depend on the stable callbacks, not the timer object, which changes
   // identity on every tick.
@@ -54,7 +56,8 @@ function MatchingScreen() {
   const totalPairs = GRID_CONFIG[difficulty].pairs;
 
   const startGame = useCallback(async () => {
-    const res = await fetch(`/api/pokemon?random=${totalPairs}`);
+    setLoading(true);
+    const res = await fetch(`/api/pokemon?random=${totalPairs}&spritesOnly=1`);
     const data = await res.json();
     const pokemonList = data.pokemon;
 
@@ -89,6 +92,7 @@ function MatchingScreen() {
     setMatchCount(0);
     setGameWon(false);
     setGameStarted(true);
+    setLoading(false);
     startTimer();
   }, [totalPairs, startTimer]);
 
@@ -190,8 +194,23 @@ function MatchingScreen() {
           />
         )}
 
+        {loading && (
+          <div
+            aria-busy="true"
+            aria-label="Dealing cards"
+            className={`grid ${GRID_CONFIG[difficulty].cols} mx-auto max-w-fit gap-2`}
+          >
+            {Array.from({ length: totalPairs * 2 }).map((_, i) => (
+              <Skeleton
+                key={i}
+                className="h-20 w-20 rounded-control sm:h-24 sm:w-24"
+              />
+            ))}
+          </div>
+        )}
+
         {/* Card grid */}
-        {gameStarted && (
+        {gameStarted && !loading && (
           <div
             className={`grid ${GRID_CONFIG[difficulty].cols} mx-auto max-w-fit gap-2`}
           >
@@ -248,7 +267,7 @@ function MatchingScreen() {
           </div>
         )}
 
-        {!gameStarted && (
+        {!gameStarted && !loading && (
           <Card variant="raised" padding="lg" className="text-center text-text-muted">
             Choose a difficulty and click Start Game!
           </Card>
