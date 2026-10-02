@@ -1,7 +1,10 @@
-import Title from "@/components/layout/title";
-import { getOfficialArtUrl, type Pokemon } from "@/lib/pokemon";
+import { ArrowRight, Flame, Lightbulb } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
+
+import PageMeta from "@/components/layout/page-meta";
+import { Button, Card, PageHeader, Skeleton, StatTile } from "@/components/ui";
+import { getOfficialArtUrl, type Pokemon } from "@/lib/pokemon";
 
 interface Round {
   answer: Pokemon;
@@ -11,9 +14,7 @@ interface Round {
 function TrainerGuessScreen() {
   const [round, setRound] = useState<Round | null>(null);
   const [revealed, setRevealed] = useState(false);
-  const [guessedCorrectly, setGuessedCorrectly] = useState<boolean | null>(
-    null
-  );
+  const [guessedCorrectly, setGuessedCorrectly] = useState<boolean | null>(null);
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
   const [bestStreak, setBestStreak] = useState(0);
@@ -72,169 +73,154 @@ function TrainerGuessScreen() {
   };
 
   return (
-    <main className="min-h-screen px-4 py-8 max-w-3xl mx-auto">
-      <Title
-        name="Who's That Pokémon?"
-        subtitle="Guess the Pokémon from its silhouette!"
+    <>
+      <PageMeta
+        title="Who's That Pokémon?"
+        description="Guess the Pokémon from its silhouette. Build streaks, use hints, and track your accuracy."
       />
 
-      {/* Score bar */}
-      <div className="flex justify-center gap-8 mb-8">
-        <div className="text-center">
-          <p className="text-xs text-[var(--color-text-muted)] uppercase">
-            Score
-          </p>
-          <p className="text-2xl font-bold text-[var(--color-yellow)]">
-            {score}
-          </p>
-        </div>
-        <div className="text-center">
-          <p className="text-xs text-[var(--color-text-muted)] uppercase">
-            Streak
-          </p>
-          <p className="text-2xl font-bold text-[var(--color-accent)]">
-            {streak}🔥
-          </p>
-        </div>
-        <div className="text-center">
-          <p className="text-xs text-[var(--color-text-muted)] uppercase">
-            Best
-          </p>
-          <p className="text-2xl font-bold text-[var(--color-green)]">
-            {bestStreak}
-          </p>
-        </div>
-        <div className="text-center">
-          <p className="text-xs text-[var(--color-text-muted)] uppercase">
-            Accuracy
-          </p>
-          <p className="text-2xl font-bold text-white">
-            {totalRounds > 0
-              ? Math.round(
-                  ((score / (hintUsed ? 5 : 10) / totalRounds) * 100 +
-                    Number.EPSILON) *
-                    10
-                ) / 10 || 0
-              : 0}
-            %
-          </p>
-        </div>
-      </div>
+      <main className="mx-auto min-h-screen max-w-3xl px-4 py-8">
+        <PageHeader
+          title="Who's That Pokémon?"
+          subtitle="Guess the Pokémon from its silhouette!"
+        />
 
-      {loading && (
-        <div className="flex justify-center py-20">
-          <div className="w-10 h-10 border-4 border-[var(--color-accent)] border-t-transparent rounded-full animate-spin" />
+        {/* Score bar */}
+        <div className="mb-8 flex justify-center gap-8">
+          <StatTile label="Score" value={score} tone="warning" />
+          <StatTile
+            label="Streak"
+            value={streak}
+            tone="primary"
+            icon={<Flame aria-hidden className="h-5 w-5" />}
+          />
+          <StatTile label="Best" value={bestStreak} tone="success" />
+          <StatTile
+            label="Accuracy"
+            value={`${
+              totalRounds > 0
+                ? Math.round(
+                    ((score / (hintUsed ? 5 : 10) / totalRounds) * 100 +
+                      Number.EPSILON) *
+                      10
+                  ) / 10 || 0
+                : 0
+            }%`}
+          />
         </div>
-      )}
 
-      {round && !loading && (
-        <>
-          {/* Silhouette / reveal area */}
-          <div className="flex justify-center mb-8">
-            <div className="relative w-64 h-64 bg-[var(--color-bg-card)] rounded-2xl border border-white/10 flex items-center justify-center overflow-hidden">
-              <Image
-                src={getOfficialArtUrl(round.answer.id)}
-                alt="mystery pokemon"
-                width={200}
-                height={200}
-                className={`transition-all duration-500 drop-shadow-lg ${
-                  revealed
-                    ? "brightness-100"
-                    : "brightness-0 contrast-200"
-                }`}
-                style={{
-                  filter: revealed
-                    ? "none"
-                    : "brightness(0) drop-shadow(0 0 1px white)",
-                }}
-                unoptimized
-              />
-              {revealed && (
-                <div
-                  className={`absolute bottom-3 left-0 right-0 text-center ${
-                    guessedCorrectly ? "text-[var(--color-green)]" : "text-[var(--color-accent)]"
-                  }`}
-                >
-                  <p className="text-lg font-bold capitalize">
-                    {guessedCorrectly ? "Correct!" : `It's ${round.answer.name}!`}
-                  </p>
-                </div>
-              )}
-            </div>
+        {loading && (
+          <div className="mb-8 flex justify-center">
+            <Skeleton className="h-64 w-64 rounded-card" />
           </div>
+        )}
 
-          {/* Hint */}
-          {!revealed && (
-            <div className="text-center mb-4">
-              {hintUsed ? (
-                <p className="text-sm text-[var(--color-text-muted)]">
-                  Type:{" "}
-                  <span className="text-white font-semibold capitalize">
-                    {round.answer.types.join(" / ")}
-                  </span>{" "}
-                  (half points)
-                </p>
-              ) : (
-                <button
-                  onClick={showHint}
-                  className="text-sm text-[var(--color-text-muted)] hover:text-white transition-colors underline"
-                >
-                  Need a hint? (half points)
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Choices */}
-          <div className="grid grid-cols-2 gap-3 max-w-md mx-auto mb-6">
-            {round.choices.map((p) => {
-              let btnClass =
-                "px-4 py-3 rounded-xl text-center font-semibold capitalize transition-all border ";
-              if (revealed) {
-                if (p.id === round.answer.id) {
-                  btnClass +=
-                    "bg-[var(--color-green)]/20 border-[var(--color-green)] text-[var(--color-green)]";
-                } else if (
-                  guessedCorrectly === false &&
-                  p.id !== round.answer.id
-                ) {
-                  btnClass +=
-                    "bg-[var(--color-bg-card)] border-white/5 text-[var(--color-text-muted)] opacity-50";
-                } else {
-                  btnClass +=
-                    "bg-[var(--color-bg-card)] border-white/5 text-[var(--color-text-muted)] opacity-50";
-                }
-              } else {
-                btnClass +=
-                  "bg-[var(--color-bg-card)] border-white/10 text-white hover:bg-[var(--color-bg-hover)] hover:border-white/20 cursor-pointer";
-              }
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => handleGuess(p)}
-                  disabled={revealed}
-                  className={btnClass}
-                >
-                  {p.name}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Next button */}
-          {revealed && (
-            <div className="text-center">
-              <button
-                onClick={loadRound}
-                className="px-8 py-3 rounded-xl bg-[var(--color-accent)] text-white font-semibold hover:brightness-110 transition-all"
+        {round && !loading && (
+          <>
+            {/* Silhouette / reveal area */}
+            <div className="mb-8 flex justify-center">
+              <Card
+                variant="raised"
+                padding="none"
+                className="relative flex h-64 w-64 items-center justify-center overflow-hidden"
               >
-                Next Pokémon →
-              </button>
+                <Image
+                  src={getOfficialArtUrl(round.answer.id)}
+                  alt={revealed ? round.answer.name : "Mystery Pokémon"}
+                  width={200}
+                  height={200}
+                  className={`transition-[filter] duration-500 ${
+                    revealed ? "brightness-100" : "brightness-0 contrast-200"
+                  }`}
+                  style={{
+                    filter: revealed
+                      ? "none"
+                      : "brightness(0) drop-shadow(0 0 1px white)",
+                  }}
+                  sizes="200px"
+                />
+                {revealed && (
+                  <div
+                    className={`absolute inset-x-0 bottom-3 text-center ${
+                      guessedCorrectly ? "text-success" : "text-primary"
+                    }`}
+                  >
+                    <p className="text-lg font-bold capitalize">
+                      {guessedCorrectly
+                        ? "Correct!"
+                        : `It's ${round.answer.name}!`}
+                    </p>
+                  </div>
+                )}
+              </Card>
             </div>
-          )}
-        </>
-      )}
-    </main>
+
+            {/* Hint */}
+            {!revealed && (
+              <div className="mb-4 text-center">
+                {hintUsed ? (
+                  <p className="inline-flex items-center gap-1.5 text-sm text-text-muted">
+                    <Lightbulb aria-hidden className="h-4 w-4 text-warning" />
+                    Type:{" "}
+                    <span className="font-semibold capitalize text-text">
+                      {round.answer.types.join(" / ")}
+                    </span>{" "}
+                    (half points)
+                  </p>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={showHint}
+                    icon={<Lightbulb aria-hidden className="h-4 w-4" />}
+                  >
+                    Need a hint? (half points)
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {/* Choices */}
+            <div className="mx-auto mb-6 grid max-w-md grid-cols-2 gap-3">
+              {round.choices.map((p) => {
+                const isAnswer = p.id === round.answer.id;
+                return (
+                  <Button
+                    key={p.id}
+                    size="lg"
+                    onClick={() => handleGuess(p)}
+                    disabled={revealed}
+                    className={`capitalize ${
+                      revealed && isAnswer
+                        ? "!border-success !bg-success/20 !text-success !opacity-100"
+                        : revealed
+                          ? "opacity-50"
+                          : ""
+                    }`}
+                  >
+                    {p.name}
+                  </Button>
+                );
+              })}
+            </div>
+
+            {/* Next button */}
+            {revealed && (
+              <div className="text-center">
+                <Button
+                  variant="primary"
+                  size="lg"
+                  onClick={loadRound}
+                  iconAfter={<ArrowRight aria-hidden className="h-4 w-4" />}
+                >
+                  Next Pokémon
+                </Button>
+              </div>
+            )}
+          </>
+        )}
+      </main>
+    </>
   );
 }
 

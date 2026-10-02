@@ -1,7 +1,19 @@
-import Title from "@/components/layout/title";
-import { getOfficialArtUrl, getSpriteUrl, type Pokemon } from "@/lib/pokemon";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+import PageMeta from "@/components/layout/page-meta";
+import {
+  Button,
+  Card,
+  DifficultyPills,
+  PageHeader,
+  Skeleton,
+  StatTile,
+  WinBanner,
+  type DifficultyOption,
+} from "@/components/ui";
+import { useGameTimer } from "@/hooks/use-game-timer";
+import { getOfficialArtUrl, getSpriteUrl, type Pokemon } from "@/lib/pokemon";
 
 interface PlacedPokemon {
   pokemon: Pokemon;
@@ -391,6 +403,14 @@ const DIFFICULTY_CONFIG: Record<
   hard: { targets: 7, decoys: 80 },
 };
 
+const DIFFICULTIES: DifficultyOption<Difficulty>[] = (
+  Object.keys(DIFFICULTY_CONFIG) as Difficulty[]
+).map((value) => ({
+  value,
+  label: value,
+  hint: `find ${DIFFICULTY_CONFIG[value].targets}`,
+}));
+
 // ─── Seeded random for stable obstacle positions ────────────────────
 
 function mulberry32(a: number) {
@@ -414,9 +434,11 @@ function HideAndSeekScreen() {
   const [misclicks, setMisclicks] = useState(0);
   const [gameStarted, setGameStarted] = useState(false);
   const [gameWon, setGameWon] = useState(false);
-  const [timer, setTimer] = useState(0);
-  const [timerActive, setTimerActive] = useState(false);
   const [loading, setLoading] = useState(false);
+  const timer = useGameTimer();
+  // Depend on the stable callbacks, not the timer object, which changes
+  // identity on every tick.
+  const { start: startTimer, stop: stopTimer, reset: resetTimer } = timer;
   const [seed, setSeed] = useState(0);
   const [clickFeedback, setClickFeedback] = useState<{
     x: number;
@@ -441,12 +463,6 @@ function HideAndSeekScreen() {
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
   }, []);
-
-  useEffect(() => {
-    if (!timerActive) return;
-    const interval = setInterval(() => setTimer((t) => t + 1), 1000);
-    return () => clearInterval(interval);
-  }, [timerActive]);
 
   function hasOverlap(
     x: number,
@@ -588,11 +604,10 @@ function HideAndSeekScreen() {
     setFoundIds(new Set());
     setMisclicks(0);
     setGameWon(false);
-    setTimer(0);
-    setTimerActive(true);
+    startTimer();
     setGameStarted(true);
     setLoading(false);
-  }, [difficulty, cfg, sceneDims]);
+  }, [cfg, sceneDims, startTimer]);
 
   const handlePokemonClick = (p: PlacedPokemon) => {
     if (gameWon) return;
@@ -607,19 +622,13 @@ function HideAndSeekScreen() {
 
       if (newFound.size === targets.length) {
         setGameWon(true);
-        setTimerActive(false);
+        stopTimer();
       }
     } else if (!p.isTarget) {
       setMisclicks((m) => m + 1);
       setClickFeedback({ x: p.x, y: p.y, correct: false });
       setTimeout(() => setClickFeedback(null), 600);
     }
-  };
-
-  const formatTime = (s: number) => {
-    const m = Math.floor(s / 60);
-    const sec = s % 60;
-    return `${m}:${sec.toString().padStart(2, "0")}`;
   };
 
   // Merge pokemon + obstacles into one depth-sorted render list
@@ -654,48 +663,42 @@ function HideAndSeekScreen() {
   }, [placed, obstacles]);
 
   return (
-    <main className="min-h-screen px-4 py-8 max-w-7xl mx-auto">
-      <Title
-        name="Hide & Seek"
-        subtitle="Find the target Pokémon hidden in the scene!"
+    <>
+      <PageMeta
+        title="Hide & Seek"
+        description="Spot the target Pokémon hidden among decoys in a procedurally generated scene."
       />
 
-      {/* Controls */}
-      <div className="flex flex-wrap gap-3 items-center justify-center mb-6">
-        {(["easy", "medium", "hard"] as Difficulty[]).map((d) => (
-          <button
-            key={d}
-            onClick={() => {
+      <main className="mx-auto min-h-screen max-w-7xl px-4 py-8">
+        <PageHeader
+          title="Hide & Seek"
+          subtitle="Find the target Pokémon hidden in the scene!"
+        >
+          <DifficultyPills
+            options={DIFFICULTIES}
+            value={difficulty}
+            onChange={(d) => {
               setDifficulty(d);
               setGameStarted(false);
+              resetTimer();
             }}
-            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all capitalize ${
-              difficulty === d
-                ? "bg-[var(--color-accent)] text-white"
-                : "bg-[var(--color-bg-card)] border border-white/10 text-[var(--color-text-muted)] hover:text-white"
-            }`}
-          >
-            {d} (find {DIFFICULTY_CONFIG[d].targets})
-          </button>
-        ))}
-        <button
-          onClick={startGame}
-          className="px-6 py-2 rounded-xl bg-[var(--color-green)] text-white font-semibold hover:brightness-110 transition-all"
-        >
-          {gameStarted ? "New Scene" : "Start Game"}
-        </button>
-      </div>
+          />
+          <Button variant="primary" onClick={startGame}>
+            {gameStarted ? "New Scene" : "Start Game"}
+          </Button>
+        </PageHeader>
 
       {loading && (
-        <div className="flex justify-center py-20">
-          <div className="w-10 h-10 border-4 border-[var(--color-accent)] border-t-transparent rounded-full animate-spin" />
-        </div>
+        <Skeleton
+          className="mx-auto rounded-card"
+          style={{ width: sceneDims.w, height: sceneDims.h }}
+        />
       )}
 
       {gameStarted && !loading && (
         <>
           {/* Target bar */}
-          <div className="bg-[var(--color-bg-card)] rounded-2xl p-4 border border-white/10 mb-4">
+          <Card variant="bar" className="mb-4">
             <div className="flex flex-wrap items-center gap-4 justify-between">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs text-[var(--color-text-muted)] uppercase font-semibold">
@@ -738,46 +741,26 @@ function HideAndSeekScreen() {
                   })}
                 </div>
               </div>
-              <div className="flex items-center gap-5 text-sm">
-                <div className="text-center">
-                  <span className="text-[var(--color-text-muted)] text-xs uppercase block">
-                    Time
-                  </span>
-                  <span className="text-white font-bold font-mono">
-                    {formatTime(timer)}
-                  </span>
-                </div>
-                <div className="text-center">
-                  <span className="text-[var(--color-text-muted)] text-xs uppercase block">
-                    Misses
-                  </span>
-                  <span className="text-[var(--color-accent)] font-bold">
-                    {misclicks}
-                  </span>
-                </div>
-                <div className="text-center">
-                  <span className="text-[var(--color-text-muted)] text-xs uppercase block">
-                    Scene
-                  </span>
-                  <span className="text-white font-bold">
-                    {theme.emoji} {theme.name}
-                  </span>
-                </div>
+              <div className="flex items-center gap-5">
+                <StatTile label="Time" value={timer.formatted} size="sm" mono />
+                <StatTile label="Misses" value={misclicks} size="sm" tone="primary" />
+                <StatTile
+                  label="Scene"
+                  value={`${theme.emoji} ${theme.name}`}
+                  size="sm"
+                />
               </div>
             </div>
-          </div>
+          </Card>
 
           {/* Win banner */}
           {gameWon && (
-            <div className="text-center mb-4 p-5 rounded-2xl bg-[var(--color-green)]/10 border border-[var(--color-green)]/30">
-              <p className="text-2xl font-bold text-[var(--color-green)] mb-1">
-                🎉 Found them all!
-              </p>
-              <p className="text-[var(--color-text-muted)]">
-                {formatTime(timer)} with {misclicks} miss
-                {misclicks !== 1 ? "es" : ""}
-              </p>
-            </div>
+            <WinBanner
+              title="Found them all!"
+              detail={`${timer.formatted} with ${misclicks} miss${
+                misclicks !== 1 ? "es" : ""
+              }`}
+            />
           )}
 
           {/* Scene viewport */}
@@ -887,11 +870,12 @@ function HideAndSeekScreen() {
       )}
 
       {!gameStarted && !loading && (
-        <div className="text-center py-20 text-[var(--color-text-muted)]">
+        <Card variant="raised" padding="lg" className="text-center text-text-muted">
           Choose a difficulty and click Start Game!
-        </div>
+        </Card>
       )}
-    </main>
+      </main>
+    </>
   );
 }
 

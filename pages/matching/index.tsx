@@ -1,9 +1,20 @@
-import Title from "@/components/layout/title";
-import { getSpriteUrl } from "@/lib/pokemon";
 import Image from "next/image";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
-interface Card {
+import PageMeta from "@/components/layout/page-meta";
+import {
+  Button,
+  Card,
+  DifficultyPills,
+  PageHeader,
+  StatTile,
+  WinBanner,
+  type DifficultyOption,
+} from "@/components/ui";
+import { useGameTimer } from "@/hooks/use-game-timer";
+import { getSpriteUrl } from "@/lib/pokemon";
+
+interface MatchCard {
   uid: string;
   pokemonId: number;
   name: string;
@@ -19,34 +30,37 @@ const GRID_CONFIG: Record<Difficulty, { pairs: number; cols: string }> = {
   hard: { pairs: 15, cols: "grid-cols-6" },
 };
 
+const DIFFICULTIES: DifficultyOption<Difficulty>[] = (
+  Object.keys(GRID_CONFIG) as Difficulty[]
+).map((value) => ({
+  value,
+  label: value,
+  hint: `${GRID_CONFIG[value].pairs} pairs`,
+}));
+
 function MatchingScreen() {
-  const [cards, setCards] = useState<Card[]>([]);
+  const [cards, setCards] = useState<MatchCard[]>([]);
   const [flippedIds, setFlippedIds] = useState<string[]>([]);
   const [moves, setMoves] = useState(0);
   const [matchCount, setMatchCount] = useState(0);
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
   const [gameStarted, setGameStarted] = useState(false);
   const [gameWon, setGameWon] = useState(false);
-  const [timer, setTimer] = useState(0);
-  const [timerActive, setTimerActive] = useState(false);
+  const timer = useGameTimer();
+  // Depend on the stable callbacks, not the timer object, which changes
+  // identity on every tick.
+  const { start: startTimer, stop: stopTimer, reset: resetTimer } = timer;
 
   const totalPairs = GRID_CONFIG[difficulty].pairs;
-
-  // Timer
-  useEffect(() => {
-    if (!timerActive) return;
-    const interval = setInterval(() => setTimer((t) => t + 1), 1000);
-    return () => clearInterval(interval);
-  }, [timerActive]);
 
   const startGame = useCallback(async () => {
     const res = await fetch(`/api/pokemon?random=${totalPairs}`);
     const data = await res.json();
     const pokemonList = data.pokemon;
 
-    const pairs: Card[] = [];
+    const pairs: MatchCard[] = [];
 
-    pokemonList.forEach((p: any) => {
+    pokemonList.forEach((p: { id: number; name: string }) => {
       pairs.push({
         uid: `${p.id}-a`,
         pokemonId: p.id,
@@ -74,10 +88,9 @@ function MatchingScreen() {
     setMoves(0);
     setMatchCount(0);
     setGameWon(false);
-    setTimer(0);
-    setTimerActive(true);
     setGameStarted(true);
-  }, [totalPairs]);
+    startTimer();
+  }, [totalPairs, startTimer]);
 
   const handleCardClick = (uid: string) => {
     if (flippedIds.length >= 2) return;
@@ -114,7 +127,7 @@ function MatchingScreen() {
             const newCount = m + 1;
             if (newCount === totalPairs) {
               setGameWon(true);
-              setTimerActive(false);
+              stopTimer();
             }
             return newCount;
           });
@@ -135,145 +148,113 @@ function MatchingScreen() {
     }
   };
 
-  const formatTime = (s: number) => {
-    const m = Math.floor(s / 60);
-    const sec = s % 60;
-    return `${m}:${sec.toString().padStart(2, "0")}`;
-  };
-
   return (
-    <main className="min-h-screen px-4 py-8 max-w-4xl mx-auto">
-      <Title
-        name="Matching"
-        subtitle="Find all the matching Pokémon pairs!"
+    <>
+      <PageMeta
+        title="Matching"
+        description="A Pokémon memory card matching game with easy, medium and hard difficulty."
       />
 
-      {/* Controls */}
-      <div className="flex flex-wrap gap-3 items-center justify-center mb-8">
-        {(["easy", "medium", "hard"] as Difficulty[]).map((d) => (
-          <button
-            key={d}
-            onClick={() => {
+      <main className="mx-auto min-h-screen max-w-4xl px-4 py-8">
+        <PageHeader
+          title="Matching"
+          subtitle="Find all the matching Pokémon pairs!"
+        >
+          <DifficultyPills
+            options={DIFFICULTIES}
+            value={difficulty}
+            onChange={(d) => {
               setDifficulty(d);
               setGameStarted(false);
+              resetTimer();
             }}
-            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all capitalize ${
-              difficulty === d
-                ? "bg-[var(--color-accent)] text-white"
-                : "bg-[var(--color-bg-card)] border border-white/10 text-[var(--color-text-muted)] hover:text-white"
-            }`}
+          />
+          <Button variant="primary" onClick={startGame}>
+            {gameStarted ? "Restart" : "Start Game"}
+          </Button>
+        </PageHeader>
+
+        {/* Stats */}
+        {gameStarted && (
+          <div className="mb-6 flex justify-center gap-6">
+            <StatTile label="Moves" value={moves} />
+            <StatTile label="Matched" value={`${matchCount}/${totalPairs}`} />
+            <StatTile label="Time" value={timer.formatted} mono />
+          </div>
+        )}
+
+        {gameWon && (
+          <WinBanner
+            title="You win!"
+            detail={`Completed in ${moves} moves and ${timer.formatted}`}
+          />
+        )}
+
+        {/* Card grid */}
+        {gameStarted && (
+          <div
+            className={`grid ${GRID_CONFIG[difficulty].cols} mx-auto max-w-fit gap-2`}
           >
-            {d} ({GRID_CONFIG[d].pairs} pairs)
-          </button>
-        ))}
-        <button
-          onClick={startGame}
-          className="px-6 py-2 rounded-xl bg-[var(--color-green)] text-white font-semibold hover:brightness-110 transition-all"
-        >
-          {gameStarted ? "Restart" : "Start Game"}
-        </button>
-      </div>
-
-      {/* Stats */}
-      {gameStarted && (
-        <div className="flex justify-center gap-6 mb-6">
-          <div className="text-center">
-            <p className="text-xs text-[var(--color-text-muted)] uppercase">
-              Moves
-            </p>
-            <p className="text-2xl font-bold text-white">{moves}</p>
-          </div>
-          <div className="text-center">
-            <p className="text-xs text-[var(--color-text-muted)] uppercase">
-              Matched
-            </p>
-            <p className="text-2xl font-bold text-white">
-              {matchCount}/{totalPairs}
-            </p>
-          </div>
-          <div className="text-center">
-            <p className="text-xs text-[var(--color-text-muted)] uppercase">
-              Time
-            </p>
-            <p className="text-2xl font-bold text-white font-mono">
-              {formatTime(timer)}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Game won overlay */}
-      {gameWon && (
-        <div className="text-center mb-6 p-6 rounded-2xl bg-[var(--color-green)]/10 border border-[var(--color-green)]/30">
-          <p className="text-2xl font-bold text-[var(--color-green)] mb-2">
-            🎉 You win!
-          </p>
-          <p className="text-[var(--color-text-muted)]">
-            Completed in {moves} moves and {formatTime(timer)}
-          </p>
-        </div>
-      )}
-
-      {/* Card grid */}
-      {gameStarted && (
-        <div
-          className={`grid ${GRID_CONFIG[difficulty].cols} gap-2 max-w-fit mx-auto`}
-        >
-          {cards.map((card) => (
-            // perspective lives on a wrapper: without it rotateY is an
-            // orthographic mirror that reads as a snap, not a card turning.
-            <div
-              key={card.uid}
-              className={`w-20 h-20 sm:w-24 sm:h-24 [perspective:800px] transition-[opacity,filter] duration-300 ${
-                card.matched ? "opacity-60 saturate-50" : ""
-              }`}
-            >
-              <button
-                onClick={() => handleCardClick(card.uid)}
-                disabled={card.matched || card.flipped}
-                // transform is written here and nowhere else — the matched state
-                // uses opacity/saturate on the wrapper so nothing competes for it.
-                className={`relative w-full h-full rounded-xl transition-transform duration-300 [transform-style:preserve-3d] [will-change:transform] ${
-                  card.flipped || card.matched
-                    ? "[transform:rotateY(180deg)]"
-                    : "cursor-pointer"
+            {cards.map((card) => (
+              // perspective lives on a wrapper: without it rotateY is an
+              // orthographic mirror that reads as a snap, not a card turning.
+              <div
+                key={card.uid}
+                className={`h-20 w-20 [perspective:800px] transition-[opacity,filter] duration-300 sm:h-24 sm:w-24 ${
+                  card.matched ? "opacity-60 saturate-50" : ""
                 }`}
               >
-                {/* Card back (face down) */}
-                <div className="absolute inset-0 rounded-xl bg-[var(--color-accent)] flex items-center justify-center [backface-visibility:hidden] [transform:translateZ(0)] border-2 border-[var(--color-accent)]">
-                  <Image
-                    src="/pokeball.png"
-                    alt="hidden"
-                    width={36}
-                    height={36}
-                    className="opacity-40"
-                  />
-                </div>
-                {/* Card front (face up) */}
-                <div className="absolute inset-0 rounded-xl bg-[var(--color-bg-card)] border border-white/10 flex flex-col items-center justify-center [transform:rotateY(180deg)] [backface-visibility:hidden]">
-                  <Image
-                    src={getSpriteUrl(card.pokemonId)}
-                    alt={card.name}
-                    width={56}
-                    height={56}
-                    sizes="56px"
-                  />
-                  <p className="text-[9px] capitalize text-white/70 mt-0.5">
-                    {card.name}
-                  </p>
-                </div>
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
+                <button
+                  type="button"
+                  onClick={() => handleCardClick(card.uid)}
+                  disabled={card.matched || card.flipped}
+                  aria-label={
+                    card.flipped || card.matched ? card.name : "Hidden card"
+                  }
+                  // transform is written here and nowhere else — the matched state
+                  // uses opacity/saturate on the wrapper so nothing competes for it.
+                  className={`relative h-full w-full rounded-control transition-transform duration-300 [transform-style:preserve-3d] [will-change:transform] ${
+                    card.flipped || card.matched
+                      ? "[transform:rotateY(180deg)]"
+                      : "cursor-pointer"
+                  }`}
+                >
+                  {/* Card back (face down) */}
+                  <div className="absolute inset-0 flex items-center justify-center rounded-control border-2 border-primary bg-primary [backface-visibility:hidden] [transform:translateZ(0)]">
+                    <Image
+                      src="/pokeball.png"
+                      alt=""
+                      width={36}
+                      height={36}
+                      className="opacity-40"
+                    />
+                  </div>
+                  {/* Card front (face up) */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center rounded-control border border-border/10 bg-surface-raised [backface-visibility:hidden] [transform:rotateY(180deg)_translateZ(0)]">
+                    <Image
+                      src={getSpriteUrl(card.pokemonId)}
+                      alt={card.name}
+                      width={56}
+                      height={56}
+                      sizes="56px"
+                    />
+                    <p className="mt-0.5 text-[9px] capitalize text-text-muted">
+                      {card.name}
+                    </p>
+                  </div>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
 
-      {!gameStarted && (
-        <div className="text-center py-20 text-[var(--color-text-muted)]">
-          Choose a difficulty and click Start Game!
-        </div>
-      )}
-    </main>
+        {!gameStarted && (
+          <Card variant="raised" padding="lg" className="text-center text-text-muted">
+            Choose a difficulty and click Start Game!
+          </Card>
+        )}
+      </main>
+    </>
   );
 }
 

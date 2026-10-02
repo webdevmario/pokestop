@@ -1,95 +1,66 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import Card from "@/components/ui/card";
+import PageMeta from "@/components/layout/page-meta";
 import pokemonFile from "@/data/pokemon.json";
+import { GAME_ROUTES } from "@/lib/games";
 
 // Read from the dataset so re-running scripts/import-pokemon.mjs keeps this honest.
 const POKEMON_COUNT = pokemonFile._meta.rowCount.toLocaleString();
 
-const GAMES = [
-  {
-    href: "/pokedex",
-    title: "Pokédex",
-    description: `Browse all ${POKEMON_COUNT} Pokémon with filters`,
-    emoji: "📖",
-    color: "#6390f0",
-  },
-  {
-    href: "/matching",
-    title: "Matching",
-    description: "Test your memory with a card matching game",
-    emoji: "🎴",
-    color: "#7ac74c",
-  },
-  {
-    href: "/trainer-guess",
-    title: "Who's That Pokémon?",
-    description: "Guess the Pokémon from its silhouette",
-    emoji: "❓",
-    color: "#f7d02c",
-  },
-  {
-    href: "/wordsearch",
-    title: "Word Search",
-    description: "Find hidden Pokémon names in the grid",
-    emoji: "🔍",
-    color: "#a98ff3",
-  },
-  {
-    href: "/hideandseek",
-    title: "Hide & Seek",
-    description: "Tap the tall grass to find hidden Pokémon",
-    emoji: "🌿",
-    color: "#2d5a1e",
-  },
-];
-
 function Home() {
   return (
-    <div className="min-h-screen flex flex-col items-center px-4 py-12">
-      {/* Hero */}
-      <div className="text-center mb-16 animate-fade-in-up">
-        <div className="mb-6">
+    <>
+      <PageMeta
+        title="Pokéstop Arcade"
+        description={`Explore, play, and test your Pokémon knowledge across ${POKEMON_COUNT} Pokémon with mini-games and tools.`}
+      />
+
+      <div className="flex min-h-screen flex-col items-center px-4 py-12">
+        {/* Hero */}
+        <div className="mb-16 animate-fade-in-up text-center">
           <Image
             src="/pokeball.png"
-            alt="pokeball"
+            alt=""
             width={80}
             height={80}
-            className="mx-auto animate-float"
+            className="mx-auto mb-6 animate-float"
+            priority
           />
+          <h1 className="mb-4 text-5xl font-bold tracking-tight text-text sm:text-6xl">
+            Pokéstop <span className="text-primary">Arcade</span>
+          </h1>
+          <p className="mx-auto max-w-md text-lg text-text-muted">
+            Explore, play, and test your Pokémon knowledge with mini-games and
+            tools.
+          </p>
         </div>
-        <h1 className="text-5xl sm:text-6xl font-bold tracking-tight text-white mb-4">
-          Pokéstop{" "}
-          <span className="text-[var(--color-accent)]">Arcade</span>
-        </h1>
-        <p className="text-[var(--color-text-muted)] text-lg max-w-md mx-auto">
-          Explore, play, and test your Pokémon knowledge with mini-games and tools.
-        </p>
-      </div>
 
-      {/* Game grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 max-w-4xl w-full">
-        {GAMES.map((game, i) => (
-          <Link
-            key={game.href}
-            href={game.href}
-            className="pokemon-card block rounded-2xl p-6 bg-[var(--color-bg-card)] border border-white/5 hover:border-white/10 transition-all animate-fade-in-up"
-            style={{ animationDelay: `${i * 80}ms` }}
-          >
-            <div
-              className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl mb-4"
-              style={{ backgroundColor: `${game.color}22` }}
+        {/* Game grid */}
+        <div className="grid w-full max-w-4xl grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {GAME_ROUTES.map(({ href, title, description, icon: Icon, color }, i) => (
+            <Link
+              key={href}
+              href={href}
+              className="block animate-fade-in-up"
+              style={{ animationDelay: `${i * 80}ms` }}
             >
-              {game.emoji}
-            </div>
-            <h2 className="text-xl font-bold text-white mb-1">{game.title}</h2>
-            <p className="text-sm text-[var(--color-text-muted)]">
-              {game.description}
-            </p>
-          </Link>
-        ))}
+              <Card variant="interactive" padding="lg" className="h-full">
+                <div
+                  className="mb-4 flex h-12 w-12 items-center justify-center rounded-control"
+                  style={{ backgroundColor: `${color}22`, color }}
+                >
+                  <Icon aria-hidden className="h-6 w-6" />
+                </div>
+                <h2 className="mb-1 text-xl font-bold text-text">{title}</h2>
+                <p className="text-sm text-text-muted">{description}</p>
+              </Card>
+            </Link>
+          ))}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 

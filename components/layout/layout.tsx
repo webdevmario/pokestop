@@ -7,9 +7,9 @@ interface Props {
 
 function Layout({ children }: Props) {
   return (
-    <div className="min-h-screen bg-[var(--color-bg)]">
+    <div className="min-h-screen bg-bg">
       <MainHeader />
-      <main className="pt-16">{children}</main>
+      <div className="pt-16">{children}</div>
     </div>
   );
 }
