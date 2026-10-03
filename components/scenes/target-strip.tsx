@@ -52,8 +52,13 @@ function TargetStrip({ theme, targets, foundIds }: Props) {
       {/*
         One row, always. `overflow-x-auto` with `shrink-0` children keeps the
         cards at a legible size and lets the row scroll instead of squeezing.
+
+        `scroll-px-4` matters: scroll snapping aligns a snap target to the
+        scrollport edge, which cancels the container's own padding-left at
+        rest, so the first card ends up flush while the last keeps its 16px.
+        Matching the scroll padding to the box padding keeps both edges even.
       */}
-      <ul className="flex snap-x gap-2 overflow-x-auto px-4 pb-4 [scrollbar-width:thin]">
+      <ul className="flex snap-x scroll-px-4 gap-2 overflow-x-auto px-4 pb-4 [scrollbar-width:thin]">
         {targets.map((t) => {
           const found = foundIds.has(t.id);
           return (
