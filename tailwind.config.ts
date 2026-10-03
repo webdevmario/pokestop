@@ -32,6 +32,8 @@ const config: Config = {
 
         // Brand / status
         primary: token("--color-primary"),
+        cta: token("--color-cta"),
+        "cta-strong": token("--color-cta-strong"),
         accent: token("--color-accent"),
         success: token("--color-success"),
         warning: token("--color-warning"),

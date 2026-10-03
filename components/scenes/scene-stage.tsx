@@ -12,8 +12,6 @@ interface Props {
   height: number;
   items: SceneItem[];
   foundIds: Set<number>;
-  /** Target currently being pointed out by the hint system. */
-  hintedId: number | null;
   onMonClick: (mon: PlacedMon) => void;
   /** Click that didn't land on a Pokemon. */
   onMissClick: () => void;
@@ -51,13 +49,11 @@ function PropNode({ item, theme }: { item: PlacedProp; theme: Theme }) {
 function MonNode({
   item,
   found,
-  hinted,
   animate,
   onClick,
 }: {
   item: PlacedMon;
   found: boolean;
-  hinted: boolean;
   animate: boolean;
   onClick: () => void;
 }) {
@@ -79,11 +75,10 @@ function MonNode({
         // across the plate must not reveal what is clickable.
         found ? "cursor-default" : "cursor-crosshair",
         animate && found ? "animate-found-pop" : "",
-        animate && hinted ? "animate-hint-pulse" : "",
       ]
         .filter(Boolean)
         .join(" ")}
-      // The button's transform is reserved for the found/hint animations, so
+      // The button's transform is reserved for the found animation, so
       // the mirror lives on the image below. Writing both here would make the
       // flip vanish mid-animation.
       style={{
@@ -122,12 +117,6 @@ function MonNode({
           <Check aria-hidden className="h-2/3 w-2/3" strokeWidth={4} />
         </span>
       )}
-      {hinted && !found && (
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-[-25%] rounded-full border-4 border-warning"
-        />
-      )}
     </button>
   );
 }
@@ -143,7 +132,6 @@ function SceneStage({
   height,
   items,
   foundIds,
-  hintedId,
   onMonClick,
   onMissClick,
   animate,
@@ -164,7 +152,6 @@ function SceneStage({
             key={item.id}
             item={item}
             found={item.isTarget && foundIds.has(item.pokemon.id)}
-            hinted={item.isTarget && hintedId === item.pokemon.id}
             animate={animate}
             onClick={() => onMonClick(item)}
           />

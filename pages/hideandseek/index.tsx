@@ -29,13 +29,12 @@ interface DifficultySpec {
   population: number;
   /** Multiplier on the theme's prop density. */
   propDensity: number;
-  hints: number;
 }
 
 const DIFFICULTY_CONFIG: Record<Difficulty, DifficultySpec> = {
-  easy: { targets: 3, population: 170, propDensity: 0.85, hints: 3 },
-  medium: { targets: 5, population: 250, propDensity: 1.0, hints: 3 },
-  hard: { targets: 7, population: 330, propDensity: 1.2, hints: 2 },
+  easy: { targets: 3, population: 170, propDensity: 0.85 },
+  medium: { targets: 5, population: 250, propDensity: 1.0 },
+  hard: { targets: 7, population: 330, propDensity: 1.2 },
 };
 
 const DIFFICULTIES: DifficultyOption<Difficulty>[] = (
@@ -50,7 +49,6 @@ const DIFFICULTIES: DifficultyOption<Difficulty>[] = (
 const PLATE_SCALE = 1.9;
 /** Unscaled sprite box; depth scale takes this to roughly 21-46px on screen. */
 const MON_BASE_SIZE = 38;
-const HINT_MS = 1500;
 
 /**
  * One sampled draw for the whole plate. This used to be several capped
@@ -75,8 +73,6 @@ function HideAndSeekScreen() {
   const [gameWon, setGameWon] = useState(false);
   const [loading, setLoading] = useState(false);
   const [sceneKey, setSceneKey] = useState(0);
-  const [hintsLeft, setHintsLeft] = useState(DIFFICULTY_CONFIG.medium.hints);
-  const [hintedId, setHintedId] = useState<number | null>(null);
   const [missMark, setMissMark] = useState<{
     x: number;
     y: number;
@@ -88,7 +84,6 @@ function HideAndSeekScreen() {
   const reduced = useReducedMotion();
   const animate = !reduced;
 
-  const hintTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const missTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [viewport, setViewport] = useState({ w: 1000, h: 560 });
@@ -96,7 +91,7 @@ function HideAndSeekScreen() {
   useEffect(() => {
     function measure() {
       const w = Math.min(window.innerWidth - 32, 1248);
-      // Leave room for header, page header, HUD and the footer hint line.
+      // Leave room for header, page header, HUD and the footer caption.
       const h = Math.max(window.innerHeight - 420, 360);
       setViewport({ w, h });
     }
@@ -107,7 +102,6 @@ function HideAndSeekScreen() {
 
   useEffect(
     () => () => {
-      if (hintTimeout.current) clearTimeout(hintTimeout.current);
       if (missTimeout.current) clearTimeout(missTimeout.current);
     },
     []
@@ -125,7 +119,6 @@ function HideAndSeekScreen() {
 
   const startGame = useCallback(async () => {
     setLoading(true);
-    setHintedId(null);
     setMissMark(null);
 
     const nextTheme = THEMES[Math.floor(Math.random() * THEMES.length)];
@@ -172,7 +165,6 @@ function HideAndSeekScreen() {
     setTargets(targetList);
     setFoundIds(new Set());
     setMisses(0);
-    setHintsLeft(cfg.hints);
     setGameWon(false);
     setGameStarted(true);
     setSceneKey((k) => k + 1);
@@ -194,7 +186,6 @@ function HideAndSeekScreen() {
           }
           return next;
         });
-        if (hintedId === mon.pokemon.id) setHintedId(null);
       } else if (!mon.isTarget) {
         setMisses((m) => m + 1);
         setMissMark({
@@ -204,7 +195,7 @@ function HideAndSeekScreen() {
         });
       }
     },
-    [gameWon, foundIds, targets.length, stopTimer, hintedId]
+    [gameWon, foundIds, targets.length, stopTimer]
   );
 
   const handleMissClick = useCallback(() => {
@@ -213,7 +204,6 @@ function HideAndSeekScreen() {
   }, [gameStarted, gameWon]);
 
   const giveUp = useCallback(() => {
-    if (hintTimeout.current) clearTimeout(hintTimeout.current);
     if (missTimeout.current) clearTimeout(missTimeout.current);
     resetTimer();
     setGameStarted(false);
@@ -222,21 +212,9 @@ function HideAndSeekScreen() {
     setTargets([]);
     setFoundIds(new Set());
     setMisses(0);
-    setHintedId(null);
     setMissMark(null);
   }, [resetTimer]);
 
-  const handleHint = useCallback(() => {
-    const remaining = targets.filter((t) => !foundIds.has(t.id));
-    if (remaining.length === 0 || hintsLeft <= 0) return;
-
-    const pick = remaining[Math.floor(Math.random() * remaining.length)];
-    setHintedId(pick.id);
-    setHintsLeft((h) => h - 1);
-
-    if (hintTimeout.current) clearTimeout(hintTimeout.current);
-    hintTimeout.current = setTimeout(() => setHintedId(null), HINT_MS);
-  }, [targets, foundIds, hintsLeft]);
 
   useEffect(() => {
     if (!missMark) return;
@@ -283,7 +261,7 @@ function HideAndSeekScreen() {
                 <Eye aria-hidden className="h-5 w-5" />
               )
             }
-            className="px-8 text-base font-bold tracking-wide shadow-[0_6px_20px_-4px_rgb(var(--color-primary)/0.55)] transition-[transform,filter,box-shadow] hover:-translate-y-0.5 hover:shadow-[0_10px_28px_-4px_rgb(var(--color-primary)/0.7)] active:translate-y-0"
+            className="px-8 text-base font-bold tracking-wide shadow-[0_6px_20px_-4px_rgb(var(--color-cta)/0.55)] transition-[transform,filter,box-shadow] hover:-translate-y-0.5 hover:shadow-[0_10px_28px_-4px_rgb(var(--color-cta)/0.7)] active:translate-y-0"
           >
             {gameStarted ? "New Scene" : "Start Game"}
           </Button>
@@ -304,9 +282,6 @@ function HideAndSeekScreen() {
               time={timer.formatted}
               misses={misses}
               sceneName={theme.name}
-              hintsLeft={hintsLeft}
-              onHint={handleHint}
-              hintDisabled={hintsLeft <= 0 || gameWon}
               onGiveUp={giveUp}
             />
 
@@ -335,7 +310,6 @@ function HideAndSeekScreen() {
                     height={plate.h}
                     items={items}
                     foundIds={foundIds}
-                    hintedId={hintedId}
                     onMonClick={handleMonClick}
                     onMissClick={handleMissClick}
                     animate={animate}
