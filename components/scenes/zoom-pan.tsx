@@ -8,7 +8,9 @@ import {
 } from "react";
 
 export const MIN_ZOOM = 0.4;
-export const MAX_ZOOM = 2;
+/** Mouse-wheel zoom gets fatiguing past 2x, so pointers and touch differ. */
+export const MAX_ZOOM_POINTER = 2;
+export const MAX_ZOOM_TOUCH = 3.5;
 
 /** Movement past this many px turns a press into a pan instead of a click. */
 const DRAG_SLOP = 6;
@@ -50,6 +52,9 @@ function ZoomPan({
   const ref = useRef<HTMLDivElement>(null);
   const [t, setT] = useState<Transform>({ x: 0, y: 0, k: 1 });
   const [panning, setPanning] = useState(false);
+  // Raised the first time a touch is seen, so a touch user can get right in
+  // close on a dense plate without making wheel zoom unwieldy on desktop.
+  const [maxZoom, setMaxZoom] = useState(MAX_ZOOM_POINTER);
 
   // Active pointers, for pinch.
   const pointers = useRef(new Map<number, { x: number; y: number }>());
@@ -59,7 +64,7 @@ function ZoomPan({
 
   const clamp = useCallback(
     (next: Transform): Transform => {
-      const k = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, next.k));
+      const k = Math.min(maxZoom, Math.max(MIN_ZOOM, next.k));
       const w = contentW * k;
       const h = contentH * k;
 
@@ -72,7 +77,7 @@ function ZoomPan({
 
       return { x, y, k };
     },
-    [contentW, contentH, viewportW, viewportH]
+    [contentW, contentH, viewportW, viewportH, maxZoom]
   );
 
   /**
@@ -100,14 +105,14 @@ function ZoomPan({
       const py = clientY - rect.top;
 
       setT((prev) => {
-        const k = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, nextK));
+        const k = Math.min(maxZoom, Math.max(MIN_ZOOM, nextK));
         // Keep the point under the cursor fixed.
         const x = px - ((px - prev.x) / prev.k) * k;
         const y = py - ((py - prev.y) / prev.k) * k;
         return clamp({ x, y, k });
       });
     },
-    [clamp]
+    [clamp, maxZoom]
   );
 
   // Non-passive wheel listener so we can preventDefault the page scroll.
@@ -122,7 +127,7 @@ function ZoomPan({
         const rect = el.getBoundingClientRect();
         const px = e.clientX - rect.left;
         const py = e.clientY - rect.top;
-        const k = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, prev.k * factor));
+        const k = Math.min(maxZoom, Math.max(MIN_ZOOM, prev.k * factor));
         const x = px - ((px - prev.x) / prev.k) * k;
         const y = py - ((py - prev.y) / prev.k) * k;
         return clamp({ x, y, k });
@@ -131,9 +136,10 @@ function ZoomPan({
 
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
-  }, [clamp]);
+  }, [clamp, maxZoom]);
 
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (e.pointerType === "touch") setMaxZoom(MAX_ZOOM_TOUCH);
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     movedRef.current = 0;
 
@@ -157,6 +163,8 @@ function ZoomPan({
       const [a, b] = Array.from(pointers.current.values());
       const dist = Math.hypot(a.x - b.x, a.y - b.y);
       movedRef.current = DRAG_SLOP + 1;
+      // Raw ratio, uncushioned: resistance near the ends makes a pinch feel
+      // like it is fighting back. Clamping alone stops it cleanly.
       zoomAbout(
         (a.x + b.x) / 2,
         (a.y + b.y) / 2,
@@ -208,11 +216,15 @@ function ZoomPan({
       onPointerCancel={endPointer}
       onPointerLeave={endPointer}
       onClickCapture={onClickCapture}
-      className="relative overflow-hidden rounded-card border-2 border-border/10 touch-none"
+      className="seek-surface relative overflow-hidden rounded-card border-2 border-border/10"
       style={{
         width: viewportW,
         height: viewportH,
         cursor: panning ? "grabbing" : "crosshair",
+        // Pinch and pan are both implemented in JS here, so the browser must
+        // not claim the gesture. `none` also kills double-tap-to-zoom, which
+        // otherwise fires on a quick tap at a Pokemon.
+        touchAction: "none",
       }}
     >
       <div

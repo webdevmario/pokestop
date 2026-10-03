@@ -13,6 +13,11 @@ interface Props<T extends string> {
   onChange: (value: T) => void;
   /** Announced to assistive tech; each game names its own scale. */
   label?: string;
+  /**
+   * Opt-in: one row of equal-width pills that holds together down to 375px.
+   * Off by default so existing callers keep their natural widths.
+   */
+  equalWidth?: boolean;
 }
 
 /** The difficulty pill row shared by matching and hide & seek. */
@@ -21,16 +26,29 @@ function DifficultyPills<T extends string>({
   value,
   onChange,
   label = "Difficulty",
+  equalWidth = false,
 }: Props<T>) {
   return (
-    <div role="group" aria-label={label} className="flex flex-wrap gap-3">
+    <div
+      role="group"
+      aria-label={label}
+      className={
+        equalWidth
+          ? "flex w-full max-w-sm flex-nowrap gap-2"
+          : "flex flex-wrap gap-3"
+      }
+    >
       {options.map((opt) => (
         <Button
           key={opt.value}
           size="md"
           selected={value === opt.value}
           onClick={() => onChange(opt.value)}
-          className="capitalize"
+          className={
+            equalWidth
+              ? "flex-1 whitespace-nowrap px-2 capitalize"
+              : "capitalize"
+          }
         >
           {opt.label}
           {opt.hint && (
