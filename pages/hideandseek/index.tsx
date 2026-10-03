@@ -1,3 +1,4 @@
+import { Eye, RotateCcw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import PageMeta from "@/components/layout/page-meta";
@@ -265,7 +266,25 @@ function HideAndSeekScreen() {
               resetTimer();
             }}
           />
-          <Button variant="primary" onClick={startGame} disabled={loading}>
+          {/*
+            The primary action sits beside three difficulty pills, so it needs
+            to out-weigh them rather than match them: larger, saturated, and
+            lifted off the surface with a tinted shadow.
+          */}
+          <Button
+            variant="primary"
+            size="lg"
+            onClick={startGame}
+            disabled={loading}
+            icon={
+              gameStarted ? (
+                <RotateCcw aria-hidden className="h-5 w-5" />
+              ) : (
+                <Eye aria-hidden className="h-5 w-5" />
+              )
+            }
+            className="px-8 text-base font-bold tracking-wide shadow-[0_6px_20px_-4px_rgb(var(--color-primary)/0.55)] transition-[transform,filter,box-shadow] hover:-translate-y-0.5 hover:shadow-[0_10px_28px_-4px_rgb(var(--color-primary)/0.7)] active:translate-y-0"
+          >
             {gameStarted ? "New Scene" : "Start Game"}
           </Button>
         </PageHeader>
