@@ -1,4 +1,4 @@
-import { Ground, Lit, PropComponent, Shade, Speckle, detail, ink } from "./shared";
+import { Bloom, Ground, Lit, PropComponent, Shade, Speckle, detail, ink } from "./shared";
 
 /** Tall layered conifer: four tiers, needle marks, sunlit south face. */
 export const ConiferTall: PropComponent = ({ p }) => (
@@ -328,5 +328,44 @@ export const GrassTuft: PropComponent = ({ p }) => (
       <ellipse cx={23} cy={14} rx={3} ry={7} />
       <ellipse cx={65} cy={10} rx={3} ry={7} />
     </g>
+  </g>
+);
+
+/**
+ * Dense bloom cluster in mixed accent colours, with foliage behind. The
+ * reference spreads get much of their richness from clumps like this rather
+ * than from single scattered flowers.
+ */
+export const BloomCluster: PropComponent = ({ p }) => (
+  <g>
+    <Ground p={p} rx={38} ry={5} />
+    <g {...ink(p, 2)} fill="none">
+      {[18, 32, 48, 64, 80].map((x, i) => (
+        <path
+          key={i}
+          d={`M${x} 98 Q${x + (i % 2 ? 10 : -10)} 66 ${x + (i % 2 ? -4 : 4)} 40`}
+          stroke={i % 2 ? p.propMid : p.propDark}
+          strokeWidth={4}
+        />
+      ))}
+    </g>
+    <g {...ink(p, 1.8)}>
+      {[
+        [14, 70, 11],
+        [84, 74, 10],
+        [50, 84, 9],
+      ].map(([x, y, r], i) => (
+        <path
+          key={i}
+          d={`M${x} ${y} q-13 -7 -16 -17 q13 2 16 17 Z`}
+          fill={i % 2 ? p.propMid : p.propDark}
+        />
+      ))}
+    </g>
+    <Bloom p={p} cx={18} cy={38} r={15} colorIndex={0} />
+    <Bloom p={p} cx={48} cy={26} r={18} colorIndex={1} />
+    <Bloom p={p} cx={78} cy={40} r={14} colorIndex={2} />
+    <Bloom p={p} cx={33} cy={56} r={12} colorIndex={3} />
+    <Bloom p={p} cx={64} cy={58} r={11} colorIndex={0} />
   </g>
 );

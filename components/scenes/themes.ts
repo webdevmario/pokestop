@@ -11,6 +11,7 @@ import type { Theme } from "./types";
 export const THEMES: Theme[] = [
   {
     id: "forest",
+    intro: "Sunlight filters through the canopy of Viridian Forest, where shy Pokémon nestle in the ferns.",
     name: "Viridian Forest",
     horizon: 0.26,
     palette: {
@@ -22,8 +23,11 @@ export const THEMES: Theme[] = [
       propLight: "#54a04c",
       ink: "#12331a",
       haze: "rgba(120, 190, 130, 0.10)",
+      blooms: ["#ff8fab", "#ffd166", "#f4978e", "#9ad1f5"],
+      atmosphere: "#cfe8d4",
     },
     props: [
+      { prop: "bloom-cluster", layer: "fore", minW: 55, maxW: 105, minRatio: 0.75, maxRatio: 1.0, weight: 4 },
       { prop: "conifer", layer: "mid", minW: 95, maxW: 185, minRatio: 1.5, maxRatio: 1.85, weight: 4 },
       { prop: "conifer-squat", layer: "mid", minW: 100, maxW: 190, minRatio: 1.1, maxRatio: 1.4, weight: 3 },
       { prop: "oak", layer: "mid", minW: 120, maxW: 225, minRatio: 0.95, maxRatio: 1.2, weight: 4 },
@@ -39,10 +43,11 @@ export const THEMES: Theme[] = [
       { prop: "flowers", layer: "fore", minW: 50, maxW: 90, minRatio: 0.75, maxRatio: 1.0, weight: 3 },
       { prop: "mushrooms", layer: "fore", minW: 40, maxW: 78, minRatio: 0.8, maxRatio: 1.05, weight: 3 },
     ],
-    propDensity: 150,
+    propDensity: 217.5,
   },
   {
     id: "cave",
+    intro: "Deep inside Mt. Moon, crystal light glitters off damp stone and something stirs in the dark.",
     name: "Mt. Moon Cave",
     horizon: 0.3,
     palette: {
@@ -54,8 +59,11 @@ export const THEMES: Theme[] = [
       propLight: "#9093cc",
       ink: "#14152a",
       haze: "rgba(120, 130, 220, 0.08)",
+      blooms: ["#9f8fff", "#6fd6e8", "#ffd1f0", "#b6f5c8"],
+      atmosphere: "#3a3c60",
     },
     props: [
+      { prop: "bloom-cluster", layer: "fore", minW: 55, maxW: 105, minRatio: 0.75, maxRatio: 1.0, weight: 2 },
       { prop: "boulder-round", layer: "mid", minW: 85, maxW: 165, minRatio: 0.65, maxRatio: 0.9, weight: 4 },
       { prop: "boulder-cracked", layer: "mid", minW: 80, maxW: 155, minRatio: 0.7, maxRatio: 0.95, weight: 3 },
       { prop: "cave-column", layer: "mid", minW: 70, maxW: 130, minRatio: 1.5, maxRatio: 2.1, weight: 2 },
@@ -69,10 +77,11 @@ export const THEMES: Theme[] = [
       { prop: "rubble", layer: "fore", minW: 60, maxW: 115, minRatio: 0.5, maxRatio: 0.7, weight: 4 },
       { prop: "glow-mushrooms", layer: "fore", minW: 50, maxW: 95, minRatio: 0.55, maxRatio: 0.75, weight: 3 },
     ],
-    propDensity: 135,
+    propDensity: 195.75,
   },
   {
     id: "beach",
+    intro: "Warm surf laps the shore at Cerulean Beach, and the dune grass is hiding more than it lets on.",
     name: "Cerulean Beach",
     horizon: 0.34,
     palette: {
@@ -84,8 +93,11 @@ export const THEMES: Theme[] = [
       propLight: "#6fba63",
       ink: "#33240f",
       haze: "rgba(255, 228, 160, 0.10)",
+      blooms: ["#ff8fab", "#ffd166", "#5ec5d6", "#ffffff"],
+      atmosphere: "#cfe9f5",
     },
     props: [
+      { prop: "bloom-cluster", layer: "fore", minW: 55, maxW: 105, minRatio: 0.75, maxRatio: 1.0, weight: 3 },
       { prop: "palm-tall", layer: "mid", minW: 115, maxW: 215, minRatio: 1.2, maxRatio: 1.55, weight: 4 },
       { prop: "palm-bent", layer: "mid", minW: 110, maxW: 200, minRatio: 1.1, maxRatio: 1.4, weight: 3 },
       { prop: "palm-young", layer: "mid", minW: 75, maxW: 140, minRatio: 0.9, maxRatio: 1.15, weight: 2 },
@@ -99,10 +111,11 @@ export const THEMES: Theme[] = [
       { prop: "shells", layer: "fore", minW: 36, maxW: 68, minRatio: 0.85, maxRatio: 1.05, weight: 4 },
       { prop: "starfish", layer: "fore", minW: 36, maxW: 66, minRatio: 0.8, maxRatio: 1.0, weight: 3 },
     ],
-    propDensity: 120,
+    propDensity: 174.0,
   },
   {
     id: "graveyard",
+    intro: "Lanterns flicker over Lavender Night, where the quiet between the stones is never quite empty.",
     name: "Lavender Night",
     horizon: 0.28,
     palette: {
@@ -114,8 +127,11 @@ export const THEMES: Theme[] = [
       propLight: "#9480c4",
       ink: "#130d22",
       haze: "rgba(160, 120, 220, 0.10)",
+      blooms: ["#c9a7ff", "#8fd8ff", "#ffd08a", "#ff9ecd"],
+      atmosphere: "#3b2a5c",
     },
     props: [
+      { prop: "bloom-cluster", layer: "fore", minW: 55, maxW: 105, minRatio: 0.75, maxRatio: 1.0, weight: 3 },
       { prop: "tomb-rounded", layer: "mid", minW: 60, maxW: 110, minRatio: 1.0, maxRatio: 1.3, weight: 5 },
       { prop: "tomb-cross", layer: "mid", minW: 60, maxW: 110, minRatio: 1.1, maxRatio: 1.4, weight: 4 },
       { prop: "tomb-broken", layer: "mid", minW: 60, maxW: 110, minRatio: 0.9, maxRatio: 1.2, weight: 3 },
@@ -129,10 +145,11 @@ export const THEMES: Theme[] = [
       { prop: "mound", layer: "fore", minW: 85, maxW: 150, minRatio: 0.45, maxRatio: 0.6, weight: 3 },
       { prop: "candles", layer: "fore", minW: 45, maxW: 85, minRatio: 0.8, maxRatio: 1.0, weight: 3 },
     ],
-    propDensity: 135,
+    propDensity: 195.75,
   },
   {
     id: "volcano",
+    intro: "Heat shimmers along Volcano Path, and embers drift past rocks that still glow from within.",
     name: "Volcano Path",
     horizon: 0.3,
     palette: {
@@ -144,8 +161,11 @@ export const THEMES: Theme[] = [
       propLight: "#ff8a3c",
       ink: "#1a0a06",
       haze: "rgba(255, 120, 40, 0.10)",
+      blooms: ["#ffb03a", "#ff7a3a", "#ffe08a", "#ff5f5f"],
+      atmosphere: "#7a3a1c",
     },
     props: [
+      { prop: "bloom-cluster", layer: "fore", minW: 55, maxW: 105, minRatio: 0.75, maxRatio: 1.0, weight: 2 },
       { prop: "lava-jagged", layer: "mid", minW: 80, maxW: 155, minRatio: 0.65, maxRatio: 0.9, weight: 4 },
       { prop: "lava-round", layer: "mid", minW: 75, maxW: 145, minRatio: 0.65, maxRatio: 0.9, weight: 3 },
       { prop: "obsidian", layer: "mid", minW: 60, maxW: 115, minRatio: 1.4, maxRatio: 1.9, weight: 3 },
@@ -159,7 +179,7 @@ export const THEMES: Theme[] = [
       { prop: "ash", layer: "fore", minW: 75, maxW: 140, minRatio: 0.45, maxRatio: 0.65, weight: 3 },
       { prop: "ember", layer: "fore", minW: 34, maxW: 66, minRatio: 1.1, maxRatio: 1.45, weight: 4 },
     ],
-    propDensity: 130,
+    propDensity: 188.5,
   },
 ];
 
