@@ -5,6 +5,7 @@ import PageMeta from "@/components/layout/page-meta";
 import { generateProps, placeMons } from "@/components/scenes/layout";
 import SceneStage from "@/components/scenes/scene-stage";
 import SeekHud from "@/components/scenes/seek-hud";
+import TargetStrip from "@/components/scenes/target-strip";
 import { THEMES } from "@/components/scenes/themes";
 import type { PlacedMon, SceneItem, Theme } from "@/components/scenes/types";
 import ZoomPan from "@/components/scenes/zoom-pan";
@@ -91,8 +92,9 @@ function HideAndSeekScreen() {
   useEffect(() => {
     function measure() {
       const w = Math.min(window.innerWidth - 32, 1248);
-      // Leave room for header, page header, HUD and the footer caption.
-      const h = Math.max(window.innerHeight - 420, 360);
+      // Leave room for the site header, page header, target strip, HUD and
+      // the footer caption, so the plate lands fully above the fold.
+      const h = Math.max(window.innerHeight - 540, 340);
       setViewport({ w, h });
     }
     measure();
@@ -276,9 +278,9 @@ function HideAndSeekScreen() {
 
         {gameStarted && !loading && (
           <>
+            <TargetStrip theme={theme} targets={targets} foundIds={foundIds} />
+
             <SeekHud
-              targets={targets}
-              foundIds={foundIds}
               time={timer.formatted}
               misses={misses}
               sceneName={theme.name}
@@ -313,6 +315,7 @@ function HideAndSeekScreen() {
                     onMonClick={handleMonClick}
                     onMissClick={handleMissClick}
                     animate={animate}
+                    seed={sceneKey}
                   />
                   {missMark && (
                     <span

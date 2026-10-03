@@ -3,6 +3,7 @@ import { Check } from "lucide-react";
 import { getSpriteUrl } from "@/lib/pokemon";
 
 import Backdrop from "./backdrop";
+import ForegroundFrame from "./foreground-frame";
 import { SceneProp } from "./props";
 import type { PlacedMon, PlacedProp, SceneItem, Theme } from "./types";
 
@@ -16,6 +17,8 @@ interface Props {
   /** Click that didn't land on a Pokemon. */
   onMissClick: () => void;
   animate: boolean;
+  /** Seeds the foreground framing foliage alongside the rest of the scene. */
+  seed: number;
 }
 
 function PropNode({ item, theme }: { item: PlacedProp; theme: Theme }) {
@@ -135,6 +138,7 @@ function SceneStage({
   onMonClick,
   onMissClick,
   animate,
+  seed,
 }: Props) {
   return (
     <div
@@ -157,6 +161,17 @@ function SceneStage({
           />
         )
       )}
+
+      {/*
+        Framing foliage, above every Pokemon so the nearest ones are genuinely
+        part-hidden by it, and inert so it never steals their clicks.
+      */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{ zIndex: 190_000 }}
+      >
+        <ForegroundFrame theme={theme} width={width} height={height} seed={seed} />
+      </div>
 
       {/* Palette-binding haze, above everything, inert. */}
       <div

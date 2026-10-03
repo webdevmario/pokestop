@@ -29,6 +29,7 @@ export const PROP_COMPONENTS: Record<string, PropComponent> = {
   stump: forest.TreeStump,
   flowers: forest.FlowerPatch,
   grass: forest.GrassTuft,
+  "bloom-cluster": forest.BloomCluster,
 
   // Cave
   "boulder-round": cave.BoulderRound,

@@ -45,6 +45,14 @@ export interface ThemePalette {
   ink: string;
   /** Tint laid over the whole plate to bind the palette together. */
   haze: string;
+  /**
+   * Accent colours for blooms and small bright details. A theme palette on its
+   * own trends monochrome; these are what give a scene colour variety without
+   * breaking its overall key.
+   */
+  blooms: [string, string, string, string];
+  /** Colour the horizon haze fades to, for atmospheric perspective. */
+  atmosphere: string;
 }
 
 export interface PropSpec {
@@ -61,6 +69,8 @@ export interface PropSpec {
 export interface Theme {
   id: string;
   name: string;
+  /** One line of scene-setting copy, shown in the target banner. */
+  intro: string;
   /** Fraction of scene height where the ground starts. */
   horizon: number;
   palette: ThemePalette;

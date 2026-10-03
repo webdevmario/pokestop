@@ -2,11 +2,7 @@ import { Flag } from "lucide-react";
 import { useState } from "react";
 
 import { Button, Card, Modal } from "@/components/ui";
-import { getSpriteUrl, type Pokemon } from "@/lib/pokemon";
-
 interface Props {
-  targets: Pokemon[];
-  foundIds: Set<number>;
   time: string;
   misses: number;
   sceneName: string;
@@ -43,16 +39,12 @@ function Readout({
 }
 
 /**
- * Always-visible progress strip.
+ * In-game controls: elapsed time, misses, scene name, and the give-up action.
  *
- * Laid out as three clusters — progress, readouts, actions — separated by
- * dividers rather than by guesswork about spacing. Everything inside a cluster
- * shares one row and one baseline, so the bar reads as grouped controls
- * instead of a line of loose items.
+ * Progress lives in TargetStrip above the scene, so this bar stays a compact
+ * row of readouts with the action pushed to the far end.
  */
 function SeekHud({
-  targets,
-  foundIds,
   time,
   misses,
   sceneName,
@@ -63,47 +55,9 @@ function SeekHud({
   return (
     <>
       <Card variant="bar" className="mb-4">
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-4">
-          {/* Progress */}
-          <div className="flex min-w-0 flex-1 items-center gap-3">
-            <span className="shrink-0 text-label font-semibold uppercase tracking-wide text-text-muted">
-              Find
-            </span>
-            <ul className="flex flex-wrap items-center gap-1.5">
-              {targets.map((t) => {
-                const found = foundIds.has(t.id);
-                return (
-                  <li
-                    key={t.id}
-                    title={found ? t.name : "Still hidden"}
-                    className={`flex h-10 w-10 items-center justify-center rounded-control border transition-colors ${
-                      found
-                        ? "border-success/40 bg-success/15"
-                        : "border-border/10 bg-surface"
-                    }`}
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element -- tiny
-                        game sprite, sized exactly; next/image adds no value. */}
-                    <img
-                      src={getSpriteUrl(t.id)}
-                      alt={found ? t.name : "Hidden target"}
-                      width={32}
-                      height={32}
-                      className={`h-8 w-8 object-contain transition-[filter,opacity] duration-300 ${
-                        found ? "" : "opacity-70 brightness-50 grayscale"
-                      }`}
-                    />
-                  </li>
-                );
-              })}
-            </ul>
-            <span className="shrink-0 font-mono text-sm font-bold tabular-nums text-text-muted">
-              {foundIds.size}/{targets.length}
-            </span>
-          </div>
-
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
           {/* Readouts */}
-          <div className="flex items-center gap-5 border-border/10 sm:border-l sm:pl-5">
+          <div className="flex items-center gap-5">
             <Readout label="Time" value={time} mono />
             <Readout label="Misses" value={misses} tone="primary" />
             <Readout
@@ -113,7 +67,7 @@ function SeekHud({
           </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-2 border-border/10 sm:border-l sm:pl-5">
+          <div className="ml-auto flex items-center gap-2">
             <Button
               size="md"
               variant="ghost"

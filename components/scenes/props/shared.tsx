@@ -87,3 +87,35 @@ export function Speckle({
     </g>
   );
 }
+
+/**
+ * Five-petal bloom in one of the theme's accent colours. Themes trend
+ * monochrome on their own; these are what give a plate colour variety without
+ * breaking its key.
+ */
+export function Bloom({
+  p,
+  cx,
+  cy,
+  r,
+  colorIndex = 0,
+}: PropProps & { cx: number; cy: number; r: number; colorIndex?: number }) {
+  const color = p.blooms[colorIndex % p.blooms.length];
+  return (
+    <g stroke={p.ink} strokeWidth={1.8} strokeLinejoin="round">
+      {[0, 72, 144, 216, 288].map((a) => {
+        const rad = (a * Math.PI) / 180;
+        return (
+          <circle
+            key={a}
+            cx={cx + Math.cos(rad) * r * 0.62}
+            cy={cy + Math.sin(rad) * r * 0.62}
+            r={r * 0.48}
+            fill={color}
+          />
+        );
+      })}
+      <circle cx={cx} cy={cy} r={r * 0.3} fill={p.ink} opacity={0.8} />
+    </g>
+  );
+}
