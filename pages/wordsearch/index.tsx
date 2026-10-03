@@ -1,12 +1,49 @@
 import { RefreshCw } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
 import PageMeta from "@/components/layout/page-meta";
 import { Button, Card, PageHeader, Skeleton, WinBanner } from "@/components/ui";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 
 const GRID_SIZE = 14;
 const WORD_COUNT = 8;
 const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+/**
+ * Soft hues for the found-word overlays, assigned by word index so a word keeps
+ * its colour for the life of the puzzle. Chosen to read on the dark grid at low
+ * opacity — this is annotation, so none of them compete with the letters.
+ */
+const OVERLAY_COLORS = [
+  "#f0a3a3", // rose
+  "#f0cf8f", // amber
+  "#9fd8a4", // green
+  "#8fd4d0", // teal
+  "#a3bdf0", // blue
+  "#c4a8ee", // violet
+];
+
+/**
+ * Vibration patterns. Android honours these; iOS Safari has no Vibration API at
+ * all, so `vibrate` is simply absent and both calls no-op.
+ */
+const BUZZ_FOUND = [20, 30, 40];
+const BUZZ_WIN = [20, 40, 20, 40, 100];
+
+function buzz(pattern: number | number[]) {
+  if (typeof navigator === "undefined" || !("vibrate" in navigator)) return;
+  try {
+    navigator.vibrate(pattern);
+  } catch {
+    // Blocked by permissions policy (e.g. a cross-origin frame). Non-essential.
+  }
+}
 
 type Direction = [number, number];
 const DIRECTIONS: Direction[] = [
@@ -42,6 +79,48 @@ function WordsearchScreen() {
   const [isSelecting, setIsSelecting] = useState(false);
   const [gameComplete, setGameComplete] = useState(false);
   const [loading, setLoading] = useState(false);
+  const reduced = useReducedMotion();
+
+  const gridRef = useRef<HTMLDivElement>(null);
+  // Cell size comes from a clamp(), so it is measured rather than recomputed:
+  // `stride` is cell + gap, and the offsets absorb the grid's padding.
+  const [metrics, setMetrics] = useState<{
+    cell: number;
+    stride: number;
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  } | null>(null);
+
+  useLayoutEffect(() => {
+    const el = gridRef.current;
+    if (!el) return;
+
+    function measure() {
+      const grid = gridRef.current;
+      if (!grid || grid.children.length < 2) return;
+
+      const first = grid.children[0] as HTMLElement;
+      const second = grid.children[1] as HTMLElement;
+      const cell = first.offsetWidth;
+      const stride = second.offsetLeft - first.offsetLeft || cell;
+
+      setMetrics({
+        cell,
+        stride,
+        left: first.offsetLeft,
+        top: first.offsetTop,
+        width: grid.offsetWidth,
+        height: grid.offsetHeight,
+      });
+    }
+
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [grid]);
 
   const generatePuzzle = useCallback(async () => {
     setLoading(true);
@@ -222,6 +301,9 @@ function WordsearchScreen() {
       const allFound = placedWords.every((pw) => pw.found);
       if (allFound) {
         setGameComplete(true);
+        buzz(BUZZ_WIN);
+      } else {
+        buzz(BUZZ_FOUND);
       }
     }
 
@@ -283,7 +365,9 @@ function WordsearchScreen() {
             onTouchEnd={handleMouseUp}
             onTouchMove={handleTouchMove}
           >
+            <div className="relative inline-block">
             <div
+              ref={gridRef}
               className="inline-grid gap-0.5 rounded-card border border-border/10 bg-surface-raised p-3"
               style={
                 {
@@ -319,6 +403,70 @@ function WordsearchScreen() {
                   );
                 })
               )}
+            </div>
+
+            {/*
+              Found-word annotations. One rounded outline per word, rotated to
+              the word's direction, so horizontals, verticals and diagonals all
+              use the same shape. Sits above the grid and takes no pointer
+              events, so dragging still selects normally.
+            */}
+            {metrics && (
+              <svg
+                aria-hidden
+                className="pointer-events-none absolute left-0 top-0"
+                width={metrics.width}
+                height={metrics.height}
+              >
+                {placedWords.map((pw, i) => {
+                  if (!pw.found) return null;
+
+                  const color = OVERLAY_COLORS[i % OVERLAY_COLORS.length];
+                  const steps = pw.word.length - 1;
+                  const centre = (row: number, col: number) => ({
+                    x: metrics.left + col * metrics.stride + metrics.cell / 2,
+                    y: metrics.top + row * metrics.stride + metrics.cell / 2,
+                  });
+
+                  const a = centre(pw.startRow, pw.startCol);
+                  const b = centre(
+                    pw.startRow + pw.direction[0] * steps,
+                    pw.startCol + pw.direction[1] * steps
+                  );
+
+                  const dx = b.x - a.x;
+                  const dy = b.y - a.y;
+                  const length = Math.hypot(dx, dy);
+                  const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+                  const thickness = metrics.cell * 0.86;
+
+                  return (
+                    <g
+                      key={pw.word}
+                      transform={`translate(${a.x} ${a.y}) rotate(${angle})`}
+                      style={
+                        reduced
+                          ? undefined
+                          : { animation: "ws-found-in 220ms ease-out both" }
+                      }
+                    >
+                      <rect
+                        x={-thickness / 2}
+                        y={-thickness / 2}
+                        width={length + thickness}
+                        height={thickness}
+                        rx={thickness / 2}
+                        fill={color}
+                        fillOpacity={0.1}
+                        stroke={color}
+                        strokeOpacity={0.55}
+                        strokeWidth={1.5}
+                      />
+                    </g>
+                  );
+                })}
+              </svg>
+            )}
             </div>
           </div>
 
