@@ -102,72 +102,103 @@ export interface MonPlacementConfig {
 }
 
 /**
- * Uniform grid for neighbour lookups, so rejection sampling stays linear
- * instead of comparing every candidate against every placed Pokemon.
+ * Bridson's Poisson-disk sampling.
+ *
+ * Produces points that are uniformly scattered with a guaranteed minimum
+ * separation: no clumps and, just as importantly, no dead zones. That matters
+ * most on a phone, where only a fraction of the plate is visible at a time —
+ * the previous Gaussian-cluster placement meant one screenful could be a swarm
+ * and the next could be empty.
+ *
+ * Returns points in a random order, so callers can take a prefix without
+ * biasing toward one corner.
  */
-class SpatialHash {
-  private readonly cells = new Map<string, { x: number; y: number; r: number }[]>();
+function poissonDisk(
+  width: number,
+  height: number,
+  minDist: number,
+  rng: () => number,
+  attempts = 30
+): { x: number; y: number }[] {
+  const cell = minDist / Math.SQRT2;
+  const cols = Math.ceil(width / cell);
+  const rows = Math.ceil(height / cell);
+  const grid: number[] = new Array(cols * rows).fill(-1);
 
-  constructor(private readonly cellSize: number) {}
+  const points: { x: number; y: number }[] = [];
+  const active: number[] = [];
 
-  private key(x: number, y: number) {
-    return `${Math.floor(x / this.cellSize)}:${Math.floor(y / this.cellSize)}`;
-  }
+  const gridIndex = (x: number, y: number) =>
+    Math.floor(y / cell) * cols + Math.floor(x / cell);
 
-  insert(x: number, y: number, r: number) {
-    const k = this.key(x, y);
-    const bucket = this.cells.get(k);
-    if (bucket) bucket.push({ x, y, r });
-    else this.cells.set(k, [{ x, y, r }]);
-  }
+  const far = (x: number, y: number) => {
+    if (x < 0 || y < 0 || x >= width || y >= height) return false;
+    const gx = Math.floor(x / cell);
+    const gy = Math.floor(y / cell);
 
-  /**
-   * Distance to the nearest placed neighbour, as a multiple of the two radii
-   * combined. 1 means just touching, >1 means clear air, Infinity means empty.
-   * Returning the margin rather than a boolean lets the caller keep the
-   * roomiest candidate instead of the first one it happened to try.
-   */
-  clearance(x: number, y: number, r: number): number {
-    const cx = Math.floor(x / this.cellSize);
-    const cy = Math.floor(y / this.cellSize);
-    let best = Infinity;
-
-    for (let gx = cx - 1; gx <= cx + 1; gx++) {
-      for (let gy = cy - 1; gy <= cy + 1; gy++) {
-        const bucket = this.cells.get(`${gx}:${gy}`);
-        if (!bucket) continue;
-        for (const other of bucket) {
-          const dx = x - other.x;
-          const dy = y - other.y;
-          const sum = r + other.r;
-          if (sum <= 0) continue;
-          const ratio = Math.hypot(dx, dy) / sum;
-          if (ratio < best) best = ratio;
-        }
+    for (let iy = Math.max(0, gy - 2); iy <= Math.min(rows - 1, gy + 2); iy++) {
+      for (let ix = Math.max(0, gx - 2); ix <= Math.min(cols - 1, gx + 2); ix++) {
+        const idx = grid[iy * cols + ix];
+        if (idx === -1) continue;
+        const p = points[idx];
+        const dx = p.x - x;
+        const dy = p.y - y;
+        if (dx * dx + dy * dy < minDist * minDist) return false;
       }
     }
-    return best;
+    return true;
+  };
+
+  const push = (x: number, y: number) => {
+    points.push({ x, y });
+    grid[gridIndex(x, y)] = points.length - 1;
+    active.push(points.length - 1);
+  };
+
+  push(rng() * width, rng() * height);
+
+  while (active.length > 0) {
+    const pick = Math.floor(rng() * active.length);
+    const seedIdx = active[pick];
+    const seed = points[seedIdx];
+    let placed = false;
+
+    for (let i = 0; i < attempts; i++) {
+      const angle = rng() * Math.PI * 2;
+      // Uniform over the annulus [minDist, 2*minDist].
+      const radius = minDist * Math.sqrt(1 + 3 * rng());
+      const x = seed.x + Math.cos(angle) * radius;
+      const y = seed.y + Math.sin(angle) * radius;
+
+      if (far(x, y)) {
+        push(x, y);
+        placed = true;
+        break;
+      }
+    }
+
+    if (!placed) {
+      active[pick] = active[active.length - 1];
+      active.pop();
+    }
   }
+
+  // Shuffle so a caller taking the first N gets an even spread, not a region.
+  for (let i = points.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [points[i], points[j]] = [points[j], points[i]];
+  }
+
+  return points;
 }
 
-/** Candidate positions tried per Pokemon before the spacing requirement relaxes. */
-const PLACEMENT_ATTEMPTS = 28;
-/** Centres must be this much further apart than the two radii combined. */
-const SPACING = 1.08;
-/** Floor the relaxation can reach, so a crowded plate still never truly stacks. */
-const MIN_SPACING = 0.82;
-
 /**
- * Places Pokemon in loose clusters with guaranteed breathing room.
+ * Places Pokemon evenly across the ground plane.
  *
- * Candidates are drawn from cluster centres so the plate still reads as a
- * crowd rather than a grid, but every candidate is rejection-sampled against
- * what is already placed. Without that check — which is how this behaved
- * before — a Gaussian scatter puts sprites directly on top of each other near
- * the cluster centres, and overlapping sprites can't be told apart or clicked.
- *
- * Targets share the clusters with decoys so they can't be found by spotting
- * the odd one out.
+ * Positions come from Poisson-disk sampling rather than the cluster scatter
+ * this used previously: zoom into any patch and you should find a comparable
+ * number of Pokemon. Targets are drawn from the same point set as decoys, so
+ * they can't be found by spotting an odd one out.
  */
 export function placeMons({
   targets,
@@ -185,91 +216,57 @@ export function placeMons({
     ...decoys.map((p) => ({ pokemon: p, isTarget: false })),
   ];
 
-  // Cluster centres, roughly one per 14 mons, biased to the foreground.
-  const clusterCount = Math.max(3, Math.round(all.length / 14));
-  const clusters = Array.from({ length: clusterCount }, () => {
-    const yT = Math.sqrt(rng());
-    return {
-      cx: rng() * sceneW,
-      cy: horizonY + (sceneH - horizonY) * yT,
-      spread: 140 + rng() * 240,
-    };
-  });
+  const margin = baseSize * 0.6;
+  const fieldW = Math.max(1, sceneW - margin * 2);
+  const fieldH = Math.max(1, sceneH - horizonY - margin * 1.5);
+  const area = fieldW * fieldH;
 
-  // Shuffle so targets don't land in a predictable slice of the clusters.
+  /*
+   * Pick the separation that yields a little more than the requested count,
+   * then take a prefix. Poisson-disk packs at roughly 0.7 of the square-grid
+   * density, and asking for ~15% extra absorbs the variance so a plate is
+   * never short.
+   */
+  const target = Math.max(all.length, 1);
+  const minDist = Math.sqrt((area * 0.7) / (target * 1.15));
+  // Never let sprites sit closer than they are wide, whatever the density asks.
+  const floor = baseSize * 0.78;
+
+  let points = poissonDisk(fieldW, fieldH, Math.max(minDist, floor), rng);
+
+  // If a dense plate came up short, relax once rather than leaving gaps.
+  if (points.length < all.length) {
+    points = poissonDisk(fieldW, fieldH, Math.max(minDist * 0.82, floor * 0.85), rng);
+  }
+
+  // Shuffle the roster so targets don't take a predictable slice of the points.
   for (let i = all.length - 1; i > 0; i--) {
     const j = Math.floor(rng() * (i + 1));
     [all[i], all[j]] = [all[j], all[i]];
   }
 
-  const maxRadius = (baseSize * 1.2) / 2;
-  const hash = new SpatialHash(maxRadius * 2.5);
-  const out: PlacedMon[] = [];
-  const margin = baseSize * 0.6;
+  return all.map((entry, i) => {
+    const point = points[i % Math.max(points.length, 1)] ?? {
+      x: rng() * fieldW,
+      y: rng() * fieldH,
+    };
 
-  all.forEach((entry, i) => {
-    let placed: { x: number; y: number; scale: number } | null = null;
-    // Roomiest candidate seen so far, used when none clears the bar outright.
-    let best: { x: number; y: number; scale: number; clear: number } | null = null;
+    const x = margin + point.x;
+    const y = horizonY + margin + point.y;
+    const scale = depthScale(y, sceneH, theme.horizon, 0.55, 1.2);
 
-    for (let attempt = 0; attempt < PLACEMENT_ATTEMPTS; attempt++) {
-      // Most candidates join a cluster; the rest scatter, so clusters don't
-      // read as islands on an empty field.
-      let x: number;
-      let y: number;
-
-      if (rng() < 0.78) {
-        const c = clusters[Math.floor(rng() * clusters.length)];
-        const u = Math.max(rng(), 1e-6);
-        const v = rng();
-        const r = Math.sqrt(-2 * Math.log(u)) * c.spread * 0.5;
-        x = c.cx + r * Math.cos(2 * Math.PI * v);
-        y = c.cy + r * Math.sin(2 * Math.PI * v) * 0.6;
-      } else {
-        x = rng() * sceneW;
-        y = horizonY + (sceneH - horizonY) * Math.sqrt(rng());
-      }
-
-      x = Math.max(margin, Math.min(sceneW - margin, x));
-      y = Math.max(horizonY + margin, Math.min(sceneH - margin * 0.5, y));
-
-      const scale = depthScale(y, sceneH, theme.horizon, 0.55, 1.2);
-      const radius = (baseSize * scale) / 2;
-
-      // Relax the requirement as attempts run out rather than giving up, so a
-      // dense plate degrades to "tight" instead of to "stacked".
-      const t = attempt / PLACEMENT_ATTEMPTS;
-      const padding = SPACING - (SPACING - MIN_SPACING) * t;
-
-      const clear = hash.clearance(x, y, radius);
-
-      if (!best || clear > best.clear) best = { x, y, scale, clear };
-
-      if (clear >= padding) {
-        placed = { x, y, scale };
-        break;
-      }
-    }
-
-    // Falling back to the roomiest candidate, rather than the first one tried,
-    // is what keeps a crowded plate from degenerating into literal stacks.
-    const final = placed ?? best!;
-    hash.insert(final.x, final.y, (baseSize * final.scale) / 2);
-
-    out.push({
-      kind: "mon",
+    return {
+      kind: "mon" as const,
       id: `mon-${entry.pokemon.id}-${i}`,
       pokemon: entry.pokemon,
       isTarget: entry.isTarget,
-      x: final.x,
-      y: final.y,
+      x,
+      y,
       width: baseSize,
       height: baseSize,
-      scale: final.scale,
+      scale,
       flipX: rng() > 0.5,
-      z: baselineZ(final.y, "mon"),
-    });
+      z: baselineZ(y, "mon"),
+    };
   });
-
-  return out;
 }

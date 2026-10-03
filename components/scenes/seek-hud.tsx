@@ -1,4 +1,4 @@
-import { Flag, Lightbulb } from "lucide-react";
+import { Flag } from "lucide-react";
 import { useState } from "react";
 
 import { Button, Card, Modal } from "@/components/ui";
@@ -10,9 +10,6 @@ interface Props {
   time: string;
   misses: number;
   sceneName: string;
-  hintsLeft: number;
-  onHint: () => void;
-  hintDisabled: boolean;
   /** Abandons the round and returns to the picker. No score penalty. */
   onGiveUp: () => void;
 }
@@ -59,9 +56,6 @@ function SeekHud({
   time,
   misses,
   sceneName,
-  hintsLeft,
-  onHint,
-  hintDisabled,
   onGiveUp,
 }: Props) {
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -120,17 +114,6 @@ function SeekHud({
 
           {/* Actions */}
           <div className="flex items-center gap-2 border-border/10 sm:border-l sm:pl-5">
-            <Button
-              size="md"
-              onClick={onHint}
-              disabled={hintDisabled}
-              icon={<Lightbulb aria-hidden className="h-4 w-4 shrink-0" />}
-            >
-              Hint
-              <span className="font-mono tabular-nums opacity-70">
-                {hintsLeft}
-              </span>
-            </Button>
             <Button
               size="md"
               variant="ghost"
