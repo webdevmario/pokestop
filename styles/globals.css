@@ -233,3 +233,25 @@ body {
     animation: none !important;
   }
 }
+
+/*
+ * Hide & seek scene surface. Tapping a Pokemon on iOS otherwise starts a text
+ * selection and raises the long-press callout ("Look Up", "Share"), and both
+ * Android and iOS flash a grey tap highlight over the sprite.
+ *
+ * Applied to the surface and every descendant, since the sprites, the prop
+ * SVGs and the letters inside them are all tap targets.
+ */
+.seek-surface,
+.seek-surface * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.seek-surface img {
+  /* Stops the iOS drag-to-save/drag-out gesture on a long press. */
+  -webkit-user-drag: none;
+  pointer-events: none;
+}

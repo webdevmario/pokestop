@@ -39,11 +39,7 @@ const DIFFICULTY_CONFIG: Record<Difficulty, DifficultySpec> = {
 
 const DIFFICULTIES: DifficultyOption<Difficulty>[] = (
   Object.keys(DIFFICULTY_CONFIG) as Difficulty[]
-).map((value) => ({
-  value,
-  label: value,
-  hint: `find ${DIFFICULTY_CONFIG[value].targets}`,
-}));
+).map((value) => ({ value, label: value }));
 
 /**
  * The plate is this many times the viewport, so there's somewhere to pan to.
@@ -215,6 +211,20 @@ function HideAndSeekScreen() {
     setMisses((m) => m + 1);
   }, [gameStarted, gameWon]);
 
+  const giveUp = useCallback(() => {
+    if (hintTimeout.current) clearTimeout(hintTimeout.current);
+    if (missTimeout.current) clearTimeout(missTimeout.current);
+    resetTimer();
+    setGameStarted(false);
+    setGameWon(false);
+    setItems([]);
+    setTargets([]);
+    setFoundIds(new Set());
+    setMisses(0);
+    setHintedId(null);
+    setMissMark(null);
+  }, [resetTimer]);
+
   const handleHint = useCallback(() => {
     const remaining = targets.filter((t) => !foundIds.has(t.id));
     if (remaining.length === 0 || hintsLeft <= 0) return;
@@ -246,6 +256,7 @@ function HideAndSeekScreen() {
           subtitle="Find the target Pokémon hidden in the scene!"
         >
           <DifficultyPills
+            equalWidth
             options={DIFFICULTIES}
             value={difficulty}
             onChange={(d) => {
@@ -277,6 +288,7 @@ function HideAndSeekScreen() {
               hintsLeft={hintsLeft}
               onHint={handleHint}
               hintDisabled={hintsLeft <= 0 || gameWon}
+              onGiveUp={giveUp}
             />
 
             {gameWon && (
